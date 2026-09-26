@@ -1,0 +1,33 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 构建产物
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+.vite/
+
+# 环境与密钥（模型密钥只走 Hermes 原生配置，不进仓库 —— ADR-0003）
+.env
+.env.local
+.env.*.local
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+*.log
+
+# 外部参考代码树：不是本产品的组成部分（CONTEXT.md 范围说明），
+# 它只作为「Hermes 实际接入方式」的证据被 ADR 引用，不入库。
+multica/
+
+# agent 运行时 home：~/.hermes/ 不进 git（ADR-0005 规则 4）
+.hermes/
+
+# 工具私有工作目录：`.zcode/plans/` 里那份是 2026-09-20 的旧架构方案
+# （RK3566 多用户 + FastAPI + Caddy），已被 ADR-0002/0004/0008 推翻。
+# 它不是产品文档，留在仓库里会被后来者误当规格读——这正是 §9.1.1 旧句卡住 M0 的同一种事故。
+.zcode/
+

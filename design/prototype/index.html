@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识系统 · 页面框架原型 v0.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Design Tokens — 知识系统 v0.1
+   气质：克制的极简工具风（纸感 / 发丝线 / 单一强调色 / 大留白）
+   ============================================================ */
+:root {
+  --paper:      #F7F6F2;
+  --surface:    #FFFFFF;
+  --ink:        #211F1C;
+  --ink-2:      #6E6A61;
+  --ink-3:      #A8A396;
+  --line:       #E7E4DB;
+  --line-soft:  #EFEDE6;
+  --accent:     #5A52E0;
+  --accent-ink: #463DD0;
+  --accent-soft:#EFEDFC;
+  --good:       #2E7D5B;
+  --warn:       #B4641F;
+
+  --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-disp: "Space Grotesk", "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace;
+
+  --r-lg: 14px;
+  --r-md: 10px;
+  --r-sm: 7px;
+
+  --topbar-h: 56px;
+  --ease: cubic-bezier(.22,1,.36,1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+::selection { background: var(--accent-soft); }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea { font-family: inherit; }
+
+/* ---------- 顶部导航栏（草图：每页固定导航栏，左上 LOGO） ---------- */
+.topbar {
+  height: var(--topbar-h);
+  display: flex; align-items: center; gap: 28px;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: relative; z-index: 40;
+}
+.brand { display:flex; align-items:center; gap:10px; user-select:none; }
+.brand-mark {
+  width: 24px; height: 24px; border-radius: 7px;
+  background: var(--ink);
+  display: grid; place-items: center;
+}
+.brand-mark::after {
+  content:""; width: 9px; height: 9px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #9D97FF, var(--accent));
+}
+.brand-name { font-weight: 700; font-size: 14px; letter-spacing: .02em; }
+.brand-tag {
+  font-family: var(--font-mono); font-size: 10px; color: var(--ink-3);
+  border: 1px solid var(--line); border-radius: 99px; padding: 1px 7px;
+}
+.nav { display:flex; gap:2px; height:100%; }
+.nav-item {
+  display:flex; align-items:center; padding: 0 14px;
+  font-size: 13.5px; color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+  transition: color .18s var(--ease);
+  position: relative;
+}
+.nav-item:hover { color: var(--ink); }
+.nav-item.active { color: var(--ink); font-weight: 500; border-bottom-color: var(--accent); }
+.topbar-right { margin-left:auto; display:flex; align-items:center; gap:14px; }
+.kbd-search {
+  display:flex; align-items:center; gap:8px;
+  border:1px solid var(--line); border-radius: var(--r-sm);
+  padding: 5px 10px; color: var(--ink-3); font-size:12.5px;
+  background: var(--paper);
+}
+.kbd-search kbd {
+  font-family: var(--font-mono); font-size:10px;
+  border:1px solid var(--line); border-radius:4px; padding:0 4px;
+  background: var(--surface); color: var(--ink-2);
+}
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, #FFD9A0, #F0937E);
+  display:grid; place-items:center; font-size:12px; font-weight:700; color:#7a3b1d;
+}
+
+/* ---------- 页面容器与切换 ---------- */
+main { height: calc(100vh - var(--topbar-h)); position: relative; }
+.page {
+  position: absolute; inset: 0;
+  opacity: 0; pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity .3s var(--ease), transform .3s var(--ease);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.page.active { opacity: 1; pointer-events: auto; transform: none; }
+
+/* ---------- 通用元素 ---------- */
+.page-head {
+  padding: 22px 28px 14px;
+  display: flex; align-items: baseline; gap: 14px;
+  flex: none;
+}
+.page-title { font-family: var(--font-disp); font-size: 20px; font-weight: 700; letter-spacing:-.01em; }
+.page-desc { color: var(--ink-3); font-size: 12.5px; }
+.chip {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size: 11.5px; color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 99px;
+  padding: 2px 9px; background: var(--surface);
+  white-space: nowrap;
+}
+.chip .dot { width:6px; height:6px; border-radius:50%; background: var(--accent); }
+
+/* ============================================================
+   页面 1 · 首页（AI 聊天）
+   草图：中央 AI 状态动效球 + 底部聊天输入框
+   ============================================================ */
+#page-chat { align-items: center; }
+.chat-stage {
+  flex: 1; width: 100%; max-width: 780px;
+  display: flex; flex-direction: column;
+  padding: 0 28px;
+  overflow-y: auto;
+}
+.chat-hero {
+  flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap: 20px; text-align:center; padding-bottom: 12px;
+}
+.orb {
+  width: 128px; height: 128px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 30%, rgba(255,255,255,.95), rgba(255,255,255,0) 42%),
+    radial-gradient(circle at 68% 72%, #8F88F5, transparent 60%),
+    radial-gradient(circle at 50% 50%, #6B63EC, #4A41C8);
+  box-shadow: 0 18px 48px -12px rgba(90,82,224,.45), inset 0 -8px 24px rgba(30,20,90,.25);
+  animation: breathe 4.2s ease-in-out infinite;
+  position: relative;
+}
+.orb::after {
+  content:""; position:absolute; inset:-14px; border-radius:50%;
+  border: 1px solid rgba(90,82,224,.18);
+  animation: ringpulse 4.2s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.055); }
+}
+@keyframes ringpulse {
+  0%,100% { transform: scale(1); opacity:.9; }
+  50%     { transform: scale(1.06); opacity:.4; }
+}
+.chat-status { font-size: 13px; color: var(--ink-2); display:flex; align-items:center; gap:8px; }
+.chat-status .pulse {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--good);
+  box-shadow: 0 0 0 3px rgba(46,125,91,.15);
+}
+.chat-greeting {
+  font-family: var(--font-disp);
+  font-size: clamp(22px, 3vw, 30px); font-weight: 700; letter-spacing: -.02em;
+}
+.chat-greeting em { font-style: normal; color: var(--accent); }
+.chat-hint { color: var(--ink-3); font-size: 13px; max-width: 420px; }
+
+/* 消息流（发送后出现，替换 hero） */
+.chat-msgs { display:none; flex:1; flex-direction:column; gap:18px; padding: 28px 0 12px; }
+.chat-msgs.show { display:flex; }
+.msg { display:flex; gap:12px; max-width: 88%; }
+.msg .m-avatar {
+  flex:none; width: 26px; height: 26px; border-radius: 50%;
+  display:grid; place-items:center; font-size: 11px; font-weight: 700;
+}
+.msg.user { align-self: flex-end; flex-direction: row-reverse; }
+.msg.user .m-avatar { background: linear-gradient(135deg,#FFD9A0,#F0937E); color:#7a3b1d; }
+.msg.ai .m-avatar { background: var(--ink); color:#fff; }
+.m-bubble {
+  padding: 10px 14px; border-radius: var(--r-md);
+  font-size: 13.5px; line-height: 1.7;
+}
+.msg.user .m-bubble { background: var(--accent); color:#fff; border-bottom-right-radius: 3px; }
+.msg.ai .m-bubble { background: var(--surface); border:1px solid var(--line); border-bottom-left-radius: 3px; }
+
+/* 建议指令 */
+.suggest-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; padding: 6px 0 14px; }
+.suggest {
+  font-size: 12.5px; color: var(--ink-2);
+  border: 1px solid var(--line); background: var(--surface);
+  border-radius: 99px; padding: 6px 14px;
+  transition: all .18s var(--ease);
+}
+.suggest:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
+
+/* 输入栏 */
+.composer {
+  flex:none; width:100%; max-width: 780px;
+  padding: 0 28px 22px;
+}
+.composer-box {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 12px 12px 10px 16px;
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.composer-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.composer-box textarea {
+  width: 100%; border: none; outline: none; resize: none;
+  font-size: 14px; line-height: 1.6; background: transparent; color: var(--ink);
+  min-height: 24px; max-height: 140px;
+}
+.composer-foot { display:flex; align-items:center; gap:8px; margin-top: 8px; }
+.tool-btn {
+  width: 30px; height: 30px; border-radius: var(--r-sm);
+  display:grid; place-items:center; color: var(--ink-3);
+  transition: all .15s var(--ease);
+}
+.tool-btn:hover { background: var(--paper); color: var(--ink); }
+.composer-meta { margin-left:auto; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-3); }
+.send-btn {
+  width: 34px; height: 34px; border-radius: var(--r-sm);
+  background: var(--ink); color:#fff;
+  display:grid; place-items:center;
+  transition: all .18s var(--ease);
+}
+.send-btn:hover { background: var(--accent); transform: translateY(-1px); }
+
+/* ============================================================
+   页面 2 · 文件管理
+   草图：左侧工具栏 + 文件资源管理器 + Obsidian 式关联图
+   ============================================================ */
+#page-files { flex-direction: row; }
+.files-toolrail {
+  flex:none; width: 52px;
+  background: var(--surface); border-right: 1px solid var(--line);
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding-top: 12px;
+}
+.rail-btn {
+  width: 38px; height: 38px; border-radius: var(--r-md);
+  display:grid; place-items:center; color: var(--ink-3);
+  transition: all .15s var(--ease);
+  position: relative;
+}
+.rail-btn:hover { color: var(--ink); background: var(--paper); }
+.rail-btn.active { color: var(--accent-ink); background: var(--accent-soft); }
+.rail-sep { width: 22px; height:1px; background: var(--line); margin: 6px 0; }
+
+.files-tree {
+  flex:none; width: 232px;
+  background: var(--surface); border-right: 1px solid var(--line);
+  display:flex; flex-direction:column;
+  overflow-y:auto;
+}
+.tree-head {
+  padding: 14px 16px 8px;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing:.08em;
+  color: var(--ink-3); text-transform: uppercase;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.tree-head button { color: var(--ink-3); font-size: 15px; line-height:1; }
+.tree-head button:hover { color: var(--ink); }
+.tree { padding: 0 8px 16px; }
+.tree-folder { margin-top: 6px; }
+.tree-folder > .tree-row { font-weight: 500; color: var(--ink); }
+.tree-row {
+  display:flex; align-items:center; gap:7px;
+  padding: 5px 8px; border-radius: var(--r-sm);
+  font-size: 13px; color: var(--ink-2);
+  cursor: pointer; transition: background .12s;
+  white-space: nowrap; overflow:hidden; text-overflow: ellipsis;
+}
+.tree-row:hover { background: var(--paper); }
+.tree-row.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 500; }
+.tree-row .t-icon { flex:none; width:14px; text-align:center; opacity:.7; }
+.tree-children { margin-left: 15px; border-left: 1px solid var(--line-soft); padding-left: 6px; }
+.tree-count { margin-left:auto; font-family:var(--font-mono); font-size:10px; color:var(--ink-3); }
+
+.files-main { flex:1; display:flex; flex-direction:column; min-width:0; }
+.files-toolbar {
+  flex:none; display:flex; align-items:center; gap:12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.view-toggle {
+  display:flex; background: var(--paper); border:1px solid var(--line);
+  border-radius: var(--r-sm); padding: 2px;
+}
+.view-toggle button {
+  font-size: 12.5px; padding: 4px 14px; border-radius: 5px; color: var(--ink-2);
+  transition: all .15s var(--ease);
+}
+.view-toggle button.active { background: var(--surface); color: var(--ink); font-weight:500; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.files-search {
+  flex:1; max-width: 300px;
+  border:1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--paper); padding: 6px 12px; font-size: 12.5px;
+  outline: none;
+}
+.files-search:focus { border-color: var(--accent); background: var(--surface); }
+.files-toolbar .spacer { flex:1; }
+.ghost-btn {
+  font-size: 12.5px; color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 5px 12px; background: var(--surface);
+  transition: all .15s var(--ease);
+}
+.ghost-btn:hover { border-color: var(--ink-3); color: var(--ink); }
+
+.files-view { flex:1; overflow: auto; position: relative; background: var(--paper); }
+
+/* 列表视图 */
+.file-table { width:100%; border-collapse: collapse; }
+.file-table th {
+  text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.06em;
+  color: var(--ink-3); font-weight: 500;
+  padding: 10px 20px 8px; border-bottom: 1px solid var(--line);
+  position: sticky; top:0; background: var(--paper);
+}
+.file-table td { padding: 9px 20px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.file-table tr:hover td { background: var(--surface); }
+.f-name { display:flex; align-items:center; gap:9px; font-weight: 500; }
+.f-badge {
+  flex:none; width: 22px; height: 22px; border-radius: 6px;
+  display:grid; place-items:center; font-size: 10px; font-weight:700;
+}
+.b-md  { background:#E8F0FE; color:#3B63C4; }
+.b-pdf { background:#FDECEA; color:#C4453B; }
+.b-img { background:#E9F6EF; color:#2E7D5B; }
+.b-url { background:#F4EFFD; color:#6B4FC4; }
+.f-meta { color: var(--ink-3); font-size: 12px; font-family: var(--font-mono); }
+.f-links { color: var(--accent-ink); font-size: 12px; font-family: var(--font-mono); }
+
+/* 关联图视图 */
+.graph-view { position:absolute; inset:0; display:none; }
+.graph-view.show { display:block; }
+.graph-view svg { width:100%; height:100%; display:block; }
+.g-node { cursor:pointer; }
+.g-node circle { transition: all .2s var(--ease); }
+.g-node:hover circle { stroke: var(--accent); stroke-width: 2; }
+.g-node text { font-size: 11px; fill: var(--ink-2); font-family: var(--font-body); }
+.g-edge { stroke: var(--line); stroke-width: 1.2; }
+.g-edge.hot { stroke: var(--accent); stroke-width: 1.6; opacity:.7; }
+.graph-legend {
+  position:absolute; left:16px; bottom:14px;
+  display:flex; gap:10px; font-size: 11px; color: var(--ink-3);
+  background: var(--surface); border:1px solid var(--line);
+  padding: 6px 12px; border-radius: 99px;
+}
+.graph-legend i { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+
+.files-statusbar {
+  flex:none; height: 30px;
+  display:flex; align-items:center; gap:16px;
+  padding: 0 20px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-3);
+}
+
+/* ============================================================
+   页面 3 · 进化图谱
+   概念：不是聊天记录，而是「信息→知识」的模块化演化轨迹
+   ============================================================ */
+#page-graph { flex-direction: row; }
+.evo-rail {
+  flex:none; width: 240px;
+  background: var(--surface); border-right: 1px solid var(--line);
+  padding: 18px 14px; overflow-y:auto;
+}
+.evo-rail-title {
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em;
+  color:var(--ink-3); text-transform:uppercase; padding: 0 6px 10px;
+}
+.evo-mod {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 11px 12px; margin-bottom: 8px;
+  transition: all .18s var(--ease);
+  background: var(--surface);
+}
+.evo-mod.on { border-color: rgba(90,82,224,.4); background: var(--accent-soft); }
+.evo-mod-head { display:flex; align-items:center; gap:8px; }
+.evo-mod-head .m-name { font-size: 13px; font-weight: 600; }
+.evo-mod-head .m-en { font-family:var(--font-mono); font-size:10px; color:var(--ink-3); }
+.evo-mod p { font-size: 11.5px; color: var(--ink-2); margin-top: 5px; line-height:1.5; }
+.switch { margin-left:auto; flex:none; width: 30px; height: 17px; border-radius: 99px; background: var(--line); position:relative; transition: background .2s; }
+.switch::after { content:""; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%; background:#fff; transition: transform .2s var(--ease); box-shadow:0 1px 2px rgba(0,0,0,.2); }
+.evo-mod.on .switch { background: var(--accent); }
+.evo-mod.on .switch::after { transform: translateX(13px); }
+
+.evo-main { flex:1; overflow-y:auto; padding: 22px 32px 40px; }
+.evo-flow {
+  display:flex; align-items:center; gap:0;
+  margin-bottom: 26px; flex-wrap: wrap;
+}
+.evo-step {
+  display:flex; align-items:center; gap:8px;
+  background: var(--surface); border:1px solid var(--line);
+  border-radius: 99px; padding: 7px 16px;
+  font-size: 12.5px; font-weight: 500;
+}
+.evo-step .n { font-family:var(--font-mono); font-size:10px; color:var(--accent); font-weight:700; }
+.evo-arrow { color: var(--ink-3); padding: 0 8px; font-size: 13px; }
+.evo-day {
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-3);
+  letter-spacing:.06em; margin: 22px 0 12px; display:flex; align-items:center; gap:12px;
+}
+.evo-day::after { content:""; flex:1; height:1px; background: var(--line); }
+.evo-card {
+  background: var(--surface); border:1px solid var(--line); border-radius: var(--r-md);
+  padding: 14px 18px; margin-bottom: 10px;
+  border-left: 3px solid var(--accent);
+  transition: box-shadow .18s var(--ease);
+}
+.evo-card:hover { box-shadow: 0 4px 16px -6px rgba(30,25,60,.12); }
+.evo-card-title { font-size: 13.5px; font-weight: 600; margin-bottom: 7px; }
+.evo-chain { display:flex; align-items:center; gap:6px; flex-wrap: wrap; }
+.chain-node {
+  font-size: 11.5px; padding: 3px 10px; border-radius: 99px;
+  border: 1px solid var(--line); color: var(--ink-2); background: var(--paper);
+}
+.chain-node.c-file { background:#E8F0FE; border-color:transparent; color:#3B63C4; }
+.chain-node.c-chat { background:#F4EFFD; border-color:transparent; color:#6B4FC4; }
+.chain-node.c-know { background:#E9F6EF; border-color:transparent; color:#2E7D5B; }
+.chain-sep { color: var(--ink-3); font-size: 11px; }
+.evo-card-meta { margin-top: 8px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-3); }
+
+/* ============================================================
+   页面 4 · 知识总结
+   草图：顶部基本信息条 + 左下高频知识排名 + 右下 AI 日/周/月/年总结
+   ============================================================ */
+#page-summary { overflow-y: auto; display:block; }
+.summary-wrap { padding: 22px 28px 40px; max-width: 1160px; margin: 0 auto; }
+.stat-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  margin-bottom: 14px;
+}
+.stat-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 16px 18px 14px;
+}
+.stat-label { font-family:var(--font-mono); font-size:10.5px; letter-spacing:.06em; color: var(--ink-3); text-transform:uppercase; }
+.stat-value { font-family: var(--font-disp); font-size: 26px; font-weight: 700; letter-spacing:-.02em; margin-top: 4px; }
+.stat-value small { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-left: 3px; }
+.stat-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.stat-bar { height: 4px; border-radius: 99px; background: var(--line-soft); margin-top: 10px; overflow:hidden; }
+.stat-bar i { display:block; height:100%; border-radius:99px; background: var(--accent); }
+.heat-row { display:flex; gap:3px; margin-top: 10px; }
+.heat-row i { flex:1; height: 18px; border-radius: 3px; background: var(--line-soft); }
+.heat-row i.l1 { background:#DCD8F8; } .heat-row i.l2 { background:#B7AFF2; }
+.heat-row i.l3 { background:#8F88EC; } .heat-row i.l4 { background: var(--accent); }
+
+.summary-grid { display:grid; grid-template-columns: 5fr 7fr; gap: 12px; }
+.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  display:flex; flex-direction:column; min-height: 380px;
+}
+.panel-head {
+  display:flex; align-items:center; gap:10px;
+  padding: 14px 18px 12px; border-bottom: 1px solid var(--line-soft);
+}
+.panel-title { font-size: 13.5px; font-weight: 600; }
+.panel-sub { font-size: 11px; color: var(--ink-3); }
+.rank-list { padding: 6px 0; }
+.rank-row {
+  display:flex; align-items:center; gap: 12px;
+  padding: 9px 18px;
+  transition: background .12s;
+}
+.rank-row:hover { background: var(--paper); }
+.rank-no {
+  flex:none; width: 20px; font-family: var(--font-mono); font-size: 11px;
+  color: var(--ink-3); text-align:center;
+}
+.rank-row:nth-child(-n+3) .rank-no { color: var(--accent); font-weight: 700; }
+.rank-body { flex:1; min-width: 0; }
+.rank-name { font-size: 13px; font-weight: 500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rank-bar { height: 3px; border-radius:99px; background: var(--line-soft); margin-top: 5px; }
+.rank-bar i { display:block; height:100%; border-radius:99px; background: linear-gradient(90deg, #B7AFF2, var(--accent)); }
+.rank-count { flex:none; font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+
+.sum-tabs { display:flex; gap: 2px; margin-left:auto; background: var(--paper); border:1px solid var(--line); border-radius: var(--r-sm); padding:2px; }
+.sum-tabs button { font-size: 12px; padding: 3px 12px; border-radius: 5px; color: var(--ink-2); }
+.sum-tabs button.active { background: var(--surface); color: var(--ink); font-weight:500; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.sum-list { padding: 8px 0; overflow-y:auto; }
+.sum-item { padding: 12px 18px; border-bottom: 1px solid var(--line-soft); }
+.sum-item:last-child { border-bottom: none; }
+.sum-item-head { display:flex; align-items:baseline; gap:10px; }
+.sum-date { font-family: var(--font-mono); font-size: 11px; color: var(--accent-ink); font-weight:500; }
+.sum-title { font-size: 13px; font-weight: 600; }
+.sum-text { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; line-height: 1.65; }
+.sum-tags { display:flex; gap:6px; margin-top: 7px; }
+.sum-tags .chip { font-size: 10.5px; padding: 1px 8px; }
+
+/* ============================================================
+   页面 5 · 设置 & 我的
+   草图：左侧设置列表 + 右侧详情页
+   ============================================================ */
+#page-settings { flex-direction: row; }
+.settings-nav {
+  flex:none; width: 216px;
+  background: var(--surface); border-right: 1px solid var(--line);
+  padding: 16px 10px; overflow-y:auto;
+}
+.settings-nav .tree-head { padding: 4px 10px 10px; }
+.s-nav-item {
+  display:flex; align-items:center; gap:9px;
+  width:100%; text-align:left;
+  padding: 8px 10px; border-radius: var(--r-sm);
+  font-size: 13px; color: var(--ink-2);
+  transition: all .12s;
+}
+.s-nav-item:hover { background: var(--paper); color: var(--ink); }
+.s-nav-item.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 500; }
+.s-nav-sep { height:1px; background: var(--line-soft); margin: 8px 6px; }
+.settings-detail { flex:1; overflow-y:auto; padding: 26px 36px 48px; }
+.settings-detail h2 { font-family: var(--font-disp); font-size: 18px; font-weight:700; letter-spacing:-.01em; }
+.settings-detail .s-desc { color: var(--ink-3); font-size: 12.5px; margin: 2px 0 22px; }
+.s-section { max-width: 560px; margin-bottom: 26px; }
+.s-section-title {
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em;
+  color: var(--ink-3); text-transform: uppercase; margin-bottom: 10px;
+}
+.profile-card {
+  display:flex; align-items:center; gap:16px;
+  background: var(--surface); border:1px solid var(--line); border-radius: var(--r-md);
+  padding: 18px;
+}
+.profile-card .avatar { width:52px; height:52px; font-size: 20px; }
+.profile-name { font-size: 15px; font-weight: 600; }
+.profile-meta { font-size: 12px; color: var(--ink-3); font-family: var(--font-mono); }
+.form-row { display:flex; flex-direction:column; gap:5px; margin-bottom: 14px; }
+.form-row label { font-size: 12.5px; color: var(--ink-2); font-weight:500; }
+.form-row input, .form-row select {
+  border:1px solid var(--line); border-radius: var(--r-sm);
+  padding: 8px 12px; font-size: 13px; background: var(--surface);
+  outline:none; color: var(--ink);
+  transition: border-color .15s;
+}
+.form-row input:focus, .form-row select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.s-placeholder {
+  border: 1.5px dashed var(--line); border-radius: var(--r-md);
+  padding: 34px 24px; text-align:center; color: var(--ink-3);
+  font-size: 12.5px; max-width: 560px;
+}
+.s-placeholder b { display:block; font-size: 13.5px; color: var(--ink-2); margin-bottom: 4px; }
+.s-row {
+  display:flex; align-items:center; gap:12px;
+  padding: 12px 0; border-bottom: 1px solid var(--line-soft);
+  max-width: 560px; font-size: 13px;
+}
+.s-row .s-row-label { flex:1; }
+.s-row .s-row-label small { display:block; color: var(--ink-3); font-size: 11.5px; }
+.primary-btn {
+  background: var(--ink); color:#fff; font-size: 12.5px; font-weight:500;
+  border-radius: var(--r-sm); padding: 8px 18px;
+  transition: all .15s var(--ease);
+}
+.primary-btn:hover { background: var(--accent); }
+
+/* ============================================================
+   AI 悬浮窗（全局）
+   草图：悬浮球 → 点击展开聊天小窗，默认读取当前页面信息
+   ============================================================ */
+.ai-fab {
+  position: fixed; right: 26px; bottom: 26px; z-index: 60;
+  width: 48px; height: 48px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 30%, rgba(255,255,255,.9), rgba(255,255,255,0) 45%),
+    radial-gradient(circle at 65% 70%, #8F88F5, transparent 60%),
+    radial-gradient(circle at 50% 50%, #6B63EC, #4A41C8);
+  box-shadow: 0 10px 28px -8px rgba(90,82,224,.55);
+  transition: transform .2s var(--ease), opacity .2s;
+  animation: breathe 4.2s ease-in-out infinite;
+}
+.ai-fab:hover { transform: scale(1.08); }
+.ai-fab.hidden { opacity:0; pointer-events:none; transform: scale(.6); }
+
+.ai-panel {
+  position: fixed; right: 26px; bottom: 26px; z-index: 61;
+  width: 360px; height: 500px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: 0 24px 64px -16px rgba(30,25,60,.28);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  transform-origin: bottom right;
+  transform: scale(.85) translateY(12px);
+  opacity: 0; pointer-events:none;
+  transition: all .28s var(--ease);
+}
+.ai-panel.open { transform: none; opacity: 1; pointer-events:auto; }
+.ai-panel-head {
+  flex:none; display:flex; align-items:center; gap:10px;
+  padding: 12px 14px; border-bottom: 1px solid var(--line-soft);
+}
+.ai-panel-head .mini-orb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #B3ADFF, var(--accent));
+}
+.ai-panel-title { font-size: 13px; font-weight: 600; }
+.ai-panel-close { margin-left:auto; color: var(--ink-3); width:26px; height:26px; border-radius:6px; display:grid; place-items:center; }
+.ai-panel-close:hover { background: var(--paper); color: var(--ink); }
+.ai-context {
+  flex:none; display:flex; align-items:center; gap:7px;
+  margin: 10px 12px 0; padding: 6px 10px;
+  background: var(--accent-soft); border-radius: var(--r-sm);
+  font-size: 11px; color: var(--accent-ink);
+}
+.ai-context .eye { flex:none; }
+.ai-context b { font-weight: 600; }
+.ai-panel-msgs { flex:1; overflow-y:auto; padding: 14px 12px; display:flex; flex-direction:column; gap:12px; }
+.ai-panel .m-bubble { font-size: 12.5px; }
+.ai-panel-input {
+  flex:none; display:flex; align-items:center; gap:8px;
+  padding: 10px 12px; border-top: 1px solid var(--line-soft);
+}
+.ai-panel-input input {
+  flex:1; border:1px solid var(--line); border-radius: var(--r-sm);
+  padding: 7px 11px; font-size: 12.5px; outline:none; background: var(--paper);
+}
+.ai-panel-input input:focus { border-color: var(--accent); background: var(--surface); }
+.ai-panel-input .send-btn { width:30px; height:30px; }
+
+/* ---------- 响应式 & 动效偏好 ---------- */
+@media (max-width: 980px) {
+  .summary-grid { grid-template-columns: 1fr; }
+  .stat-strip { grid-template-columns: repeat(2,1fr); }
+  .files-tree { width: 190px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orb, .orb::after, .ai-fab { animation: none; }
+  * { transition-duration: .01ms !important; }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; border: 2px solid var(--paper); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+</style>
+</head>
+<body>
+
+<!-- ================= 顶部导航栏 ================= -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <span class="brand-name">知识系统</span>
+    <span class="brand-tag">v0.1 原型</span>
+  </div>
+  <nav class="nav" id="nav">
+    <button class="nav-item active" data-page="chat">聊天</button>
+    <button class="nav-item" data-page="files">文件管理</button>
+    <button class="nav-item" data-page="graph">进化图谱</button>
+    <button class="nav-item" data-page="summary">知识总结</button>
+    <button class="nav-item" data-page="settings">设置</button>
+  </nav>
+  <div class="topbar-right">
+    <div class="kbd-search">搜索知识库 <kbd>⌘K</kbd></div>
+    <div class="avatar">暖</div>
+  </div>
+</header>
+
+<main>
+
+<!-- ================= 页面 1 · 首页 / AI 聊天 ================= -->
+<section class="page active" id="page-chat">
+  <div class="chat-stage" id="chatStage">
+    <div class="chat-hero" id="chatHero">
+      <div class="orb"></div>
+      <div class="chat-status"><span class="pulse"></span>AI 就绪 · 已索引 128 个文件 · 342 条关联</div>
+      <h1 class="chat-greeting">下午好，今天想<em>整理</em>点什么？</h1>
+      <p class="chat-hint">我会读取你存入的文件和对话，帮你把散落的信息连成知识。</p>
+    </div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="suggest-row">
+      <button class="suggest" data-q="帮我总结本周新增的笔记">总结本周新增笔记</button>
+      <button class="suggest" data-q="哪些文件之间存在关联？">找出相关联的文件</button>
+      <button class="suggest" data-q="回顾我们昨天讨论的内容">回顾昨天的讨论</button>
+      <button class="suggest" data-q="把最近的灵感整理成知识点">整理最近的灵感</button>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="composer-box">
+      <textarea id="chatInput" rows="1" placeholder="问点什么，或让我帮你整理知识…"></textarea>
+      <div class="composer-foot">
+        <button class="tool-btn" title="附加文件">＋</button>
+        <button class="tool-btn" title="引用知识">⌘</button>
+        <span class="composer-meta">上下文：全库 · GPT 级模型</span>
+        <button class="send-btn" id="chatSend" title="发送">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 页面 2 · 文件管理 ================= -->
+<section class="page" id="page-files">
+  <aside class="files-toolrail">
+    <button class="rail-btn active" title="全部文件"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg></button>
+    <button class="rail-btn" title="最近访问"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></button>
+    <button class="rail-btn" title="标签"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 13l-7 7-9-9V4h7l9 9z"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor"/></svg></button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" title="收藏"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6-5.4-2.9L6.6 19.7l1.1-6L3.2 9.4l6.1-.8L12 3z"/></svg></button>
+    <button class="rail-btn" title="回收站"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m3 0v12a2 2 0 01-2 2H8a2 2 0 01-2-2V7"/></svg></button>
+  </aside>
+
+  <aside class="files-tree">
+    <div class="tree-head">知识库 <button title="新建">＋</button></div>
+    <div class="tree">
+      <div class="tree-folder">
+        <div class="tree-row"><span class="t-icon">▾</span>📁 笔记<span class="tree-count">46</span></div>
+        <div class="tree-children">
+          <div class="tree-row active"><span class="t-icon">·</span>增长模型.md</div>
+          <div class="tree-row"><span class="t-icon">·</span>小红书运营手册.md</div>
+          <div class="tree-row"><span class="t-icon">·</span>AI 产品观察.md</div>
+          <div class="tree-row"><span class="t-icon">·</span>读书 · 认知觉醒.md</div>
+        </div>
+      </div>
+      <div class="tree-folder">
+        <div class="tree-row"><span class="t-icon">▾</span>📁 项目<span class="tree-count">23</span></div>
+        <div class="tree-children">
+          <div class="tree-row"><span class="t-icon">·</span>知识系统 v0.1.md</div>
+          <div class="tree-row"><span class="t-icon">·</span>竞品调研.pdf</div>
+        </div>
+      </div>
+      <div class="tree-folder">
+        <div class="tree-row"><span class="t-icon">▸</span>📁 灵感<span class="tree-count">38</span></div>
+      </div>
+      <div class="tree-folder">
+        <div class="tree-row"><span class="t-icon">▸</span>📁 附件<span class="tree-count">21</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="files-main">
+    <div class="files-toolbar">
+      <div class="view-toggle" id="viewToggle">
+        <button class="active" data-view="list">列表</button>
+        <button data-view="graph">关联图</button>
+      </div>
+      <input class="files-search" placeholder="搜索文件名、内容、标签…">
+      <div class="spacer"></div>
+      <button class="ghost-btn">导入文件</button>
+      <button class="ghost-btn">AI 整理</button>
+    </div>
+
+    <div class="files-view">
+      <!-- 列表视图 -->
+      <table class="file-table" id="listView">
+        <thead><tr><th style="width:42%">名称</th><th>类型</th><th>更新时间</th><th>关联</th></tr></thead>
+        <tbody>
+          <tr><td><div class="f-name"><span class="f-badge b-md">M</span>增长模型.md</div></td><td class="f-meta">Markdown</td><td class="f-meta">10 分钟前</td><td class="f-links">◈ 6</td></tr>
+          <tr><td><div class="f-name"><span class="f-badge b-md">M</span>小红书运营手册.md</div></td><td class="f-meta">Markdown</td><td class="f-meta">昨天 21:04</td><td class="f-links">◈ 9</td></tr>
+          <tr><td><div class="f-name"><span class="f-badge b-md">M</span>AI 产品观察.md</div></td><td class="f-meta">Markdown</td><td class="f-meta">昨天 18:32</td><td class="f-links">◈ 4</td></tr>
+          <tr><td><div class="f-name"><span class="f-badge b-pdf">P</span>竞品调研.pdf</div></td><td class="f-meta">PDF · 2.4 MB</td><td class="f-meta">3 天前</td><td class="f-links">◈ 3</td></tr>
+          <tr><td><div class="f-name"><span class="f-badge b-md">M</span>读书 · 认知觉醒.md</div></td><td class="f-meta">Markdown</td><td class="f-meta">4 天前</td><td class="f-links">◈ 5</td></tr>
+          <tr><td><div class="f-name"><span class="f-badge b-url">L</span>Obsidian 图谱设计参考</div></td><td class="f-meta">网页剪藏</td><td class="f-meta">上周</td><td class="f-links">◈ 2</td></tr>
+          <tr><td><div class="f-name"><span class="f-badge b-img">I</span>白头脑暴照片.png</div></td><td class="f-meta">图片 · 3.1 MB</td><td class="f-meta">上周</td><td class="f-links">◈ 1</td></tr>
+        </tbody>
+      </table>
+
+      <!-- 关联图视图（Obsidian 风格 mock） -->
+      <div class="graph-view" id="graphView">
+        <svg viewBox="0 0 900 560">
+          <line class="g-edge hot" x1="450" y1="260" x2="300" y2="160"/>
+          <line class="g-edge hot" x1="450" y1="260" x2="610" y2="170"/>
+          <line class="g-edge hot" x1="450" y1="260" x2="330" y2="380"/>
+          <line class="g-edge" x1="450" y1="260" x2="590" y2="370"/>
+          <line class="g-edge" x1="300" y1="160" x2="200" y2="250"/>
+          <line class="g-edge" x1="610" y1="170" x2="710" y2="260"/>
+          <line class="g-edge" x1="330" y1="380" x2="200" y2="420"/>
+          <line class="g-edge" x1="590" y1="370" x2="710" y2="420"/>
+          <line class="g-edge" x1="300" y1="160" x2="180" y2="110"/>
+          <line class="g-edge" x1="610" y1="170" x2="740" y2="120"/>
+          <g class="g-node"><circle cx="450" cy="260" r="15" fill="#5A52E0"/><text x="450" y="292" text-anchor="middle" font-weight="600" fill="#211F1C">增长模型.md</text></g>
+          <g class="g-node"><circle cx="300" cy="160" r="11" fill="#B7AFF2"/><text x="300" y="140" text-anchor="middle">小红书运营手册</text></g>
+          <g class="g-node"><circle cx="610" cy="170" r="11" fill="#B7AFF2"/><text x="610" y="150" text-anchor="middle">AI 产品观察</text></g>
+          <g class="g-node"><circle cx="330" cy="380" r="10" fill="#8FD4B4"/><text x="330" y="408" text-anchor="middle">认知觉醒</text></g>
+          <g class="g-node"><circle cx="590" cy="370" r="9" fill="#8FD4B4"/><text x="590" y="396" text-anchor="middle">竞品调研.pdf</text></g>
+          <g class="g-node"><circle cx="200" cy="250" r="6" fill="#D9D5CB"/><text x="200" y="272" text-anchor="middle">爆款公式</text></g>
+          <g class="g-node"><circle cx="710" cy="260" r="6" fill="#D9D5CB"/><text x="710" y="282" text-anchor="middle">Agent 趋势</text></g>
+          <g class="g-node"><circle cx="200" cy="420" r="5" fill="#D9D5CB"/><text x="200" y="440" text-anchor="middle">习惯回路</text></g>
+          <g class="g-node"><circle cx="710" cy="420" r="5" fill="#D9D5CB"/><text x="710" y="440" text-anchor="middle">Notion AI</text></g>
+          <g class="g-node"><circle cx="180" cy="110" r="5" fill="#D9D5CB"/><text x="180" y="96" text-anchor="middle">选题库</text></g>
+          <g class="g-node"><circle cx="740" cy="120" r="5" fill="#D9D5CB"/><text x="740" y="106" text-anchor="middle">RAG 笔记</text></g>
+        </svg>
+        <div class="graph-legend">
+          <span><i style="background:#5A52E0"></i>当前文件</span>
+          <span><i style="background:#B7AFF2"></i>直接关联</span>
+          <span><i style="background:#8FD4B4"></i>知识沉淀</span>
+          <span><i style="background:#D9D5CB"></i>次级关联</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="files-statusbar">
+      <span>共 128 个文件</span><span>342 条关联</span><span>2.4 GB / 10 GB</span>
+      <span style="margin-left:auto">视图：列表 · 按更新时间排序</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 页面 3 · 进化图谱 ================= -->
+<section class="page" id="page-graph">
+  <aside class="evo-rail">
+    <div class="evo-rail-title">演化模块 · Hook</div>
+    <div class="evo-mod on">
+      <div class="evo-mod-head"><span class="m-name">收集器</span><span class="m-en">Collector</span><div class="switch"></div></div>
+      <p>文件、网页、随口想法的统一入口，万物可先存后理。</p>
+    </div>
+    <div class="evo-mod on">
+      <div class="evo-mod-head"><span class="m-name">解析器</span><span class="m-en">Parser</span><div class="switch"></div></div>
+      <p>AI 读取内容，抽取主题、实体与意图。</p>
+    </div>
+    <div class="evo-mod on">
+      <div class="evo-mod-head"><span class="m-name">关联器</span><span class="m-en">Linker</span><div class="switch"></div></div>
+      <p>把新信息与已有文件、知识点建立连接。</p>
+    </div>
+    <div class="evo-mod">
+      <div class="evo-mod-head"><span class="m-name">沉淀器</span><span class="m-en">Distiller</span><div class="switch"></div></div>
+      <p>定期把对话与文件蒸馏为可复用的知识点。</p>
+    </div>
+  </aside>
+
+  <div class="evo-main">
+    <div class="evo-flow">
+      <div class="evo-step"><span class="n">01</span>信息进入</div><span class="evo-arrow">→</span>
+      <div class="evo-step"><span class="n">02</span>AI 理解</div><span class="evo-arrow">→</span>
+      <div class="evo-step"><span class="n">03</span>建立关联</div><span class="evo-arrow">→</span>
+      <div class="evo-step"><span class="n">04</span>沉淀知识</div>
+    </div>
+
+    <div class="evo-day">今天 · 3 次演化</div>
+    <div class="evo-card">
+      <div class="evo-card-title">从一次聊天，长出一个知识点</div>
+      <div class="evo-chain">
+        <span class="chain-node c-chat">对话 · 爆款内容套路（12 条）</span><span class="chain-sep">→</span>
+        <span class="chain-node c-file">关联 · 小红书运营手册.md</span><span class="chain-sep">→</span>
+        <span class="chain-node c-know">沉淀 · 知识点「低粉爆款三要素」</span>
+      </div>
+      <div class="evo-card-meta">14:32 · 关联器自动触发 · 置信度 92%</div>
+    </div>
+    <div class="evo-card">
+      <div class="evo-card-title">新文件被并入已有知识网络</div>
+      <div class="evo-chain">
+        <span class="chain-node c-file">文件 · 竞品调研.pdf</span><span class="chain-sep">→</span>
+        <span class="chain-node c-file">关联 · AI 产品观察.md</span><span class="chain-sep">→</span>
+        <span class="chain-node c-know">更新 · 知识点「AI 笔记竞品对比」</span>
+      </div>
+      <div class="evo-card-meta">11:07 · 解析器 + 关联器 · 新增 3 条边</div>
+    </div>
+
+    <div class="evo-day">昨天 · 5 次演化</div>
+    <div class="evo-card">
+      <div class="evo-card-title">高频主题聚合成簇</div>
+      <div class="evo-chain">
+        <span class="chain-node c-chat">7 次对话提及「增长」</span><span class="chain-sep">→</span>
+        <span class="chain-node c-file">聚合 · 增长模型.md</span><span class="chain-sep">→</span>
+        <span class="chain-node c-know">建议 · 建立「增长」主题簇</span>
+      </div>
+      <div class="evo-card-meta">21:40 · 沉淀器周度任务 · 等待你确认</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 页面 4 · 知识总结 ================= -->
+<section class="page" id="page-summary">
+  <div class="summary-wrap">
+    <div class="page-head" style="padding-left:0;padding-right:0">
+      <span class="page-title">知识总结</span>
+      <span class="page-desc">你和 AI 一起积累的一切，都在这里被看见</span>
+    </div>
+
+    <div class="stat-strip">
+      <div class="stat-card">
+        <div class="stat-label">相识天数</div>
+        <div class="stat-value">47<small>天</small></div>
+        <div class="stat-sub">自 8 月 6 日起</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">互动热度 · 近 14 天</div>
+        <div class="heat-row">
+          <i class="l1"></i><i class="l2"></i><i class="l1"></i><i class="l3"></i><i class="l2"></i><i class="l4"></i><i class="l3"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l3"></i><i class="l4"></i><i class="l2"></i><i class="l4"></i>
+        </div>
+        <div class="stat-sub" style="margin-top:8px">今日已互动 23 次</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">知识资产</div>
+        <div class="stat-value">128<small>文件</small></div>
+        <div class="stat-sub">342 条关联 · 56 个知识点</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">存储空间</div>
+        <div class="stat-value">2.4<small>/ 10 GB</small></div>
+        <div class="stat-bar"><i style="width:24%"></i></div>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">高频触发知识</span>
+          <span class="panel-sub">最常被调用 TOP 6</span>
+        </div>
+        <div class="rank-list">
+          <div class="rank-row"><span class="rank-no">01</span><div class="rank-body"><div class="rank-name">低粉爆款三要素</div><div class="rank-bar"><i style="width:100%"></i></div></div><span class="rank-count">38 次</span></div>
+          <div class="rank-row"><span class="rank-no">02</span><div class="rank-body"><div class="rank-name">小红书选题公式</div><div class="rank-bar"><i style="width:76%"></i></div></div><span class="rank-count">29 次</span></div>
+          <div class="rank-row"><span class="rank-no">03</span><div class="rank-body"><div class="rank-name">增长模型 · AARRR</div><div class="rank-bar"><i style="width:63%"></i></div></div><span class="rank-count">24 次</span></div>
+          <div class="rank-row"><span class="rank-no">04</span><div class="rank-body"><div class="rank-name">AI 笔记产品竞品对比</div><div class="rank-bar"><i style="width:47%"></i></div></div><span class="rank-count">18 次</span></div>
+          <div class="rank-row"><span class="rank-no">05</span><div class="rank-body"><div class="rank-name">习惯回路模型</div><div class="rank-bar"><i style="width:34%"></i></div></div><span class="rank-count">13 次</span></div>
+          <div class="rank-row"><span class="rank-no">06</span><div class="rank-body"><div class="rank-name">封面图设计 checklist</div><div class="rank-bar"><i style="width:26%"></i></div></div><span class="rank-count">10 次</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">AI 自动总结</span>
+          <div class="sum-tabs" id="sumTabs">
+            <button class="active">日</button><button>周</button><button>月</button><button>年</button>
+          </div>
+        </div>
+        <div class="sum-list">
+          <div class="sum-item">
+            <div class="sum-item-head"><span class="sum-date">09-22 今日</span><span class="sum-title">围绕「增长」的一天</span></div>
+            <p class="sum-text">今天 23 次互动中，14 次与增长模型相关。你将《竞品调研.pdf》并入知识网络，新增 3 条关联。AI 建议：明天可以把「增长」主题簇确认下来。</p>
+            <div class="sum-tags"><span class="chip">增长</span><span class="chip">竞品</span><span class="chip">+3 关联</span></div>
+          </div>
+          <div class="sum-item">
+            <div class="sum-item-head"><span class="sum-date">09-21</span><span class="sum-title">小红书运营知识持续加密</span></div>
+            <p class="sum-text">「低粉爆款三要素」被调用 6 次，成为本周最高频知识点。与「选题公式」之间出现新的潜在关联，已加入待确认队列。</p>
+            <div class="sum-tags"><span class="chip">小红书</span><span class="chip">爆款</span></div>
+          </div>
+          <div class="sum-item">
+            <div class="sum-item-head"><span class="sum-date">09-20</span><span class="sum-title">碎片灵感开始聚拢</span></div>
+            <p class="sum-text">过去三天随手记录的 9 条灵感中，5 条指向「AI 工具设计」方向，已自动归拢为候选主题，等待你确认是否立项。</p>
+            <div class="sum-tags"><span class="chip">灵感</span><span class="chip">AI 工具</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 页面 5 · 设置 & 我的 ================= -->
+<section class="page" id="page-settings">
+  <aside class="settings-nav">
+    <div class="tree-head">设置与账户</div>
+    <button class="s-nav-item active">👤 个人资料</button>
+    <button class="s-nav-item">✦ AI 模型</button>
+    <button class="s-nav-item">🗄 存储与同步</button>
+    <div class="s-nav-sep"></div>
+    <button class="s-nav-item">⌨ 快捷键</button>
+    <button class="s-nav-item">🔔 通知</button>
+    <button class="s-nav-item">ℹ 关于</button>
+  </aside>
+
+  <div class="settings-detail">
+    <h2>个人资料</h2>
+    <p class="s-desc">你的账户信息与偏好，其他设置模块将在功能敲定后逐个补全</p>
+
+    <div class="s-section">
+      <div class="profile-card">
+        <div class="avatar">暖</div>
+        <div>
+          <div class="profile-name">暖暖</div>
+          <div class="profile-meta">加入 47 天 · 128 文件 · 56 知识点</div>
+        </div>
+        <button class="ghost-btn" style="margin-left:auto">更换头像</button>
+      </div>
+    </div>
+
+    <div class="s-section">
+      <div class="s-section-title">基本信息</div>
+      <div class="form-row"><label>昵称</label><input value="暖暖"></div>
+      <div class="form-row"><label>邮箱</label><input value="nuan@example.com"></div>
+      <button class="primary-btn">保存修改</button>
+    </div>
+
+    <div class="s-section">
+      <div class="s-section-title">待设计模块</div>
+      <div class="s-placeholder">
+        <b>AI 模型 · 存储同步 · 快捷键 · 通知</b>
+        框架已预留，等布局确认后逐个填充具体功能项
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ================= AI 悬浮窗（全局） ================= -->
+<button class="ai-fab" id="aiFab" title="AI 助手"></button>
+
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-panel-head">
+    <div class="mini-orb"></div>
+    <span class="ai-panel-title">AI 助手</span>
+    <button class="ai-panel-close" id="aiPanelClose">✕</button>
+  </div>
+  <div class="ai-context">
+    <svg class="eye" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+    已读取当前页面：<b id="aiCtxName">聊天</b>，可以直接问我这页的内容
+  </div>
+  <div class="ai-panel-msgs" id="aiPanelMsgs">
+    <div class="msg ai"><div class="m-avatar">AI</div><div class="m-bubble">我在看着你当前的页面。需要我帮你总结、查找关联，还是继续聊点什么？</div></div>
+  </div>
+  <div class="ai-panel-input">
+    <input id="aiPanelInput" placeholder="基于当前页面提问…">
+    <button class="send-btn" id="aiPanelSend"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+  </div>
+</div>
+
+<script>
+/* ---------- 页面路由 ---------- */
+const navItems = document.querySelectorAll('.nav-item');
+const pages = {
+  chat: document.getElementById('page-chat'),
+  files: document.getElementById('page-files'),
+  graph: document.getElementById('page-graph'),
+  summary: document.getElementById('page-summary'),
+  settings: document.getElementById('page-settings'),
+};
+const pageNames = { chat:'聊天', files:'文件管理', graph:'进化图谱', summary:'知识总结', settings:'设置' };
+const aiFab = document.getElementById('aiFab');
+const aiPanel = document.getElementById('aiPanel');
+const aiCtxName = document.getElementById('aiCtxName');
+let currentPage = 'chat';
+
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
+    const key = item.dataset.page;
+    navItems.forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    Object.values(pages).forEach(p => p.classList.remove('active'));
+    pages[key].classList.add('active');
+    currentPage = key;
+    aiCtxName.textContent = pageNames[key];
+    /* 聊天页隐藏悬浮球，避免与主输入框重复 */
+    aiFab.classList.toggle('hidden', key === 'chat' && !aiPanel.classList.contains('open'));
+    if (key === 'chat') aiPanel.classList.remove('open');
+  });
+});
+
+/* ---------- 首页聊天 demo ---------- */
+const chatInput = document.getElementById('chatInput');
+const chatSend = document.getElementById('chatSend');
+const chatHero = document.getElementById('chatHero');
+const chatMsgs = document.getElementById('chatMsgs');
+
+function pushMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `<div class="m-avatar">${role === 'user' ? '暖' : 'AI'}</div><div class="m-bubble"></div>`;
+  div.querySelector('.m-bubble').textContent = text;
+  chatMsgs.appendChild(div);
+  div.scrollIntoView({ behavior:'smooth', block:'end' });
+}
+function sendChat(text) {
+  text = (text || chatInput.value).trim();
+  if (!text) return;
+  if (!chatMsgs.classList.contains('show')) {
+    chatHero.style.display = 'none';
+    chatMsgs.classList.add('show');
+  }
+  pushMsg('user', text);
+  chatInput.value = '';
+  setTimeout(() => pushMsg('ai', '收到。我会结合知识库里 128 个文件来回答——这是原型占位回复，正式版将在这里展示真实推理与引用来源。'), 550);
+}
+chatSend.addEventListener('click', () => sendChat());
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+document.querySelectorAll('.suggest').forEach(s =>
+  s.addEventListener('click', () => sendChat(s.dataset.q)));
+
+/* ---------- 文件管理：列表 / 关联图 切换 ---------- */
+const viewToggle = document.getElementById('viewToggle');
+const listView = document.getElementById('listView');
+const graphView = document.getElementById('graphView');
+viewToggle.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    viewToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const isGraph = btn.dataset.view === 'graph';
+    listView.style.display = isGraph ? 'none' : '';
+    graphView.classList.toggle('show', isGraph);
+  });
+});
+
+/* ---------- 进化图谱：模块开关 ---------- */
+document.querySelectorAll('.evo-mod').forEach(mod => {
+  mod.addEventListener('click', () => mod.classList.toggle('on'));
+});
+
+/* ---------- 知识总结：日/周/月/年 tab（原型：仅切换态） ---------- */
+document.querySelectorAll('#sumTabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#sumTabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+/* ---------- 设置：左侧列表切换（原型：仅高亮态） ---------- */
+document.querySelectorAll('.s-nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.s-nav-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+/* ---------- AI 悬浮窗 ---------- */
+document.getElementById('aiPanelClose').addEventListener('click', () => {
+  aiPanel.classList.remove('open');
+  aiFab.classList.toggle('hidden', currentPage === 'chat');
+});
+aiFab.addEventListener('click', () => {
+  aiPanel.classList.add('open');
+  aiFab.classList.add('hidden');
+});
+function aiPanelReply() {
+  const input = document.getElementById('aiPanelInput');
+  const msgs = document.getElementById('aiPanelMsgs');
+  const text = input.value.trim();
+  if (!text) return;
+  const u = document.createElement('div');
+  u.className = 'msg user';
+  u.innerHTML = '<div class="m-avatar">暖</div><div class="m-bubble"></div>';
+  u.querySelector('.m-bubble').textContent = text;
+  msgs.appendChild(u);
+  input.value = '';
+  setTimeout(() => {
+    const a = document.createElement('div');
+    a.className = 'msg ai';
+    a.innerHTML = '<div class="m-avatar">AI</div><div class="m-bubble"></div>';
+    a.querySelector('.m-bubble').textContent =
+      `我已读取「${pageNames[currentPage]}」页面的内容。这是原型占位回复，正式版将基于当前页面上下文作答。`;
+    msgs.appendChild(a);
+    a.scrollIntoView({ behavior:'smooth', block:'end' });
+  }, 500);
+  u.scrollIntoView({ behavior:'smooth', block:'end' });
+}
+document.getElementById('aiPanelSend').addEventListener('click', aiPanelReply);
+document.getElementById('aiPanelInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') aiPanelReply();
+});
+</script>
+</body>
+</html>

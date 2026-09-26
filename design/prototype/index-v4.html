@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="Z0x2aSy14BJSGg1vEQglIa">
+<head data-page-node-id="x8GWzpzK1UT5f1WbwImxIC">
+<meta charset="UTF-8" data-page-node-id="lcWq9mSH3KT1vZ8lbH2Ffx">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="vAF7AtBzyJwKiuTraexAb8">
+<title>知识系统 · v0.4 三色 + 悬浮球</title>
+<script>
+/* 主题与主色需在首次绘制前定好，避免闪白 */
+(function () {
+  var saved = localStorage.getItem('ks-theme');
+  var sys = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.dataset.theme = saved || sys;
+  document.documentElement.dataset.brand = localStorage.getItem('ks-brand') || 'indigo';
+})();
+</script>
+<style>
+/* ============================================================
+   三色体系 · 只有三种主体色，零第四色
+   01 墨 Ink        —— 结构、文字、中性面（占约 90% 面积）
+   02 主色 Primary  —— 行动、选中态、AI 本体
+                       三套候选：靛 Indigo（默认）/ 钢 Steel / 绛 Claret
+   03 陶 Terracotta —— 点缀：需要注意的数据与产出
+   主色可现场切换，用 sidebar 底部的「原型控件」对比后再定案
+   ============================================================ */
+:root{
+  color-scheme: light;
+  --bg:#F4F3EF;        /* 纸面 */
+  --surface:#FFFFFF;   /* 卡片 */
+  --surface-2:#FAF9F6; /* 次级面 */
+  --surface-3:#EEEDE8; /* 内嵌面 */
+  --ink:#151A18; --ink-2:#5C635F; --ink-3:#7A817C;
+  --line:#E3E3DC; --line-soft:#EDEDE6;
+
+  /* 主色 · 靛 Indigo（默认候选） */
+  --brand:#3B4CC0; --brand-deep:#2C3A9B; --brand-soft:#E7EAFB; --brand-ink:#2A3788; --brand-mid:#97A2E6;
+  --on-brand:#FFFFFF;
+  --accent:#B4551F; --accent-soft:#FAEBDF; --accent-ink:#96430F; --accent-mid:#DDA07A;
+
+  --node-1:var(--brand); --node-2:#9DA8E9; --node-3:var(--accent); --node-4:#C9CDC7;
+  --orb-core:#3B4CC0; --orb-edge:#1B2470; --orb-light:#8994F2; --orb-warm:rgba(180,85,31,.32);
+
+  --shadow-1:0 1px 3px rgba(20,26,24,.06);
+  --shadow-2:0 10px 30px -12px rgba(20,26,24,.20);
+  --shadow-3:0 24px 64px -20px rgba(20,26,24,.28);
+
+  --r-lg:14px; --r-md:10px; --r-sm:7px;
+  --sidebar-w:252px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --ease-quart:cubic-bezier(.25,1,.5,1);
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#101312; --surface:#181C1A; --surface-2:#1E2321; --surface-3:#242A27;
+  --ink:#ECEEE9; --ink-2:#A5ABA6; --ink-3:#848B86;
+  --line:#252A28; --line-soft:#1F2422;
+
+  --brand:#929DF5; --brand-deep:#AAB3F8; --brand-soft:#1C2140; --brand-ink:#B6BEFB; --brand-mid:#4B57AC;
+  --on-brand:#0D1020;
+  --accent:#E1904F; --accent-soft:#2C2018; --accent-ink:#F0AB74; --accent-mid:#8A5530;
+
+  --node-1:var(--brand); --node-2:#3D4788; --node-3:var(--accent); --node-4:#4A514C;
+  --orb-core:#5A69E0; --orb-edge:#141B4E; --orb-light:#B3BCFA; --orb-warm:rgba(225,144,79,.32);
+
+  --shadow-1:0 1px 3px rgba(0,0,0,.4);
+  --shadow-2:0 10px 30px -12px rgba(0,0,0,.6);
+  --shadow-3:0 24px 64px -20px rgba(0,0,0,.72);
+}
+
+/* ============================================================
+   主色候选 · 白天 / 黑夜两套值
+   切换方式：html[data-brand] —— indigo（默认）/ steel / claret
+   ============================================================ */
+:root[data-brand="steel"]{
+  --brand:#1E6B93; --brand-deep:#16536F; --brand-soft:#E3EFF6; --brand-ink:#14526F; --brand-mid:#8CBED6;
+  --on-brand:#FFFFFF;
+  --node-2:#9FC9DD;
+  --orb-core:#1E6B93; --orb-edge:#0E3547; --orb-light:#74B7D8;
+}
+:root[data-theme="dark"][data-brand="steel"]{
+  --brand:#63B8DC; --brand-deep:#86CBE7; --brand-soft:#132630; --brand-ink:#96D5EE; --brand-mid:#2D6B85;
+  --on-brand:#08161D;
+  --node-2:#2A5D74;
+  --orb-core:#3592BC; --orb-edge:#0B2C3B; --orb-light:#A5DCF2;
+}
+:root[data-brand="claret"]{
+  --brand:#9C3B52; --brand-deep:#7E2E41; --brand-soft:#F7E7EB; --brand-ink:#7E2E41; --brand-mid:#D59AA9;
+  --on-brand:#FFFFFF;
+  --node-2:#DFAEBA;
+  --orb-core:#9C3B52; --orb-edge:#54182A; --orb-light:#DE93A6;
+}
+:root[data-theme="dark"][data-brand="claret"]{
+  --brand:#E48A9E; --brand-deep:#EDA6B6; --brand-soft:#2C1A20; --brand-ink:#F0A8B8; --brand-mid:#8A4A5A;
+  --on-brand:#200A11;
+  --node-2:#7A4351;
+  --orb-core:#BB5570; --orb-edge:#3C1420; --orb-light:#F0B3C1;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  background:var(--bg); color:var(--ink); font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px}
+::selection{background:var(--brand-soft);color:var(--brand-ink)}
+
+/* 主题切换过渡 */
+body,.sidebar,.nav-item,.card,.panel,.tree,.topbar,.ai-pop,.f-chip,.stat-card{
+  transition:background-color .3s var(--ease),color .3s var(--ease),border-color .3s var(--ease);
+}
+
+/* ============================================================
+   整体布局：左侧常驻导航 + 右侧内容区
+   ============================================================ */
+.app{display:flex;height:100vh;overflow:hidden}
+
+.sidebar{
+  flex:none;width:var(--sidebar-w);
+  background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:16px 12px 14px;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 20px;user-select:none}
+.brand-mark{width:30px;height:30px;border-radius:9px;background:var(--ink);display:grid;place-items:center;flex:none}
+.brand-mark::after{content:"";width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 34% 32%,var(--orb-light),var(--brand))}
+.brand-text{display:flex;flex-direction:column;min-width:0}
+.brand-name{font-weight:700;font-size:14px;letter-spacing:.02em;line-height:1.3}
+.brand-sub{font-size:10.5px;color:var(--ink-3);line-height:1.4}
+.brand-tag{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:9.5px;color:var(--ink-3);border:1px solid var(--line);border-radius:99px;padding:1px 6px;margin-left:auto;flex:none}
+
+/* 导航：图标 + 名称 + 一句解释，避免"不知道这个栏目是干嘛的" */
+.nav-group{margin-bottom:16px}
+.nav-group-label{font-family:ui-monospace,Consolas,monospace;font-size:9.5px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;padding:0 11px;margin-bottom:7px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{
+  position:relative;display:flex;align-items:flex-start;gap:10px;
+  padding:9px 11px;border-radius:var(--r-md);
+  text-align:left;width:100%;
+  transition:background-color .2s var(--ease),transform .2s var(--ease);
+}
+.nav-item svg{flex:none;margin-top:2px;color:var(--ink-3);opacity:.8;transition:color .2s var(--ease),opacity .2s var(--ease)}
+.nav-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.nav-text b{font-size:13.5px;font-weight:500;color:var(--ink-2);line-height:1.35;transition:color .2s var(--ease)}
+.nav-text small{font-size:11px;color:var(--ink-3);line-height:1.45;transition:color .2s var(--ease)}
+.nav-item:hover{background:var(--surface-2);transform:translateX(2px)}
+.nav-item:hover .nav-text b{color:var(--ink)}
+.nav-item:hover svg{color:var(--ink);opacity:1}
+.nav-item.active{background:var(--brand-soft)}
+.nav-item.active::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:20px;border-radius:99px;background:var(--brand)}
+.nav-item.active svg{color:var(--brand);opacity:1}
+.nav-item.active .nav-text b{color:var(--brand-ink);font-weight:600}
+.nav-item.active .nav-text small{color:var(--brand-ink);opacity:.7}
+
+.sidebar-foot{margin-top:auto;display:flex;flex-direction:column;gap:9px}
+
+/* AI 生命体「球」的外观，这里被悬浮球与 AI 小窗复用 */
+.life-orb{
+  width:32px;height:32px;border-radius:50%;flex:none;
+  background:
+    radial-gradient(circle at 34% 30%,rgba(255,255,255,.7),transparent 46%),
+    radial-gradient(circle at 62% 74%,var(--orb-light),transparent 58%),
+    radial-gradient(circle at 50% 50%,var(--orb-core),var(--orb-edge));
+  box-shadow:0 4px 14px -4px var(--orb-warm);
+  animation:lifeBreathe 4.4s ease-in-out infinite;
+}
+@keyframes lifeBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+/* 原型控件：只服务本次设计评审，不属于产品功能（虚线框以便区分） */
+.proto-box{border:1px dashed var(--line);border-radius:var(--r-md);padding:9px 10px 10px;background:var(--surface-2)}
+.proto-label{font-family:ui-monospace,Consolas,monospace;font-size:9.5px;letter-spacing:.08em;color:var(--ink-3);margin-bottom:8px}
+.brand-dots{display:flex;gap:5px}
+.bdot{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 4px;border-radius:var(--r-sm);border:1px solid transparent;transition:all .2s var(--ease)}
+.bdot i{width:16px;height:16px;border-radius:50%;display:block;border:1px solid rgba(0,0,0,.1)}
+.bdot span{font-size:10px;color:var(--ink-3);line-height:1}
+.bdot[data-brand="indigo"] i{background:#3B4CC0}
+.bdot[data-brand="steel"] i{background:#1E6B93}
+.bdot[data-brand="claret"] i{background:#9C3B52}
+:root[data-theme="dark"] .bdot[data-brand="indigo"] i{background:#929DF5}
+:root[data-theme="dark"] .bdot[data-brand="steel"] i{background:#63B8DC}
+:root[data-theme="dark"] .bdot[data-brand="claret"] i{background:#E48A9E}
+.bdot:hover{border-color:var(--line);background:var(--surface)}
+.bdot.active{border-color:var(--brand-mid);background:var(--surface)}
+.bdot.active span{color:var(--brand-ink);font-weight:600}
+
+.theme-toggle{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 11px;border-radius:var(--r-md);
+  font-size:12.5px;color:var(--ink-2);border:1px solid var(--line);
+  transition:background-color .2s var(--ease),color .2s var(--ease),border-color .2s var(--ease);
+}
+.theme-toggle:hover{background:var(--surface-2);color:var(--ink)}
+.theme-toggle svg{flex:none}
+:root[data-theme="light"] .icon-moon{display:none}
+:root[data-theme="dark"] .icon-sun{display:none}
+
+/* 内容区 */
+.content{flex:1;min-width:0;position:relative;overflow:hidden}
+.page{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;opacity:0;pointer-events:none}
+.page.active{opacity:1;pointer-events:auto;animation:pageIn .4s var(--ease-quart) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(7px);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+
+/* L2 BlurFade 错峰入场 */
+.stagger>*{animation:riseIn .5s var(--ease-quart) both}
+.stagger>*:nth-child(1){animation-delay:.02s}
+.stagger>*:nth-child(2){animation-delay:.07s}
+.stagger>*:nth-child(3){animation-delay:.12s}
+.stagger>*:nth-child(4){animation-delay:.17s}
+.stagger>*:nth-child(5){animation-delay:.22s}
+.stagger>*:nth-child(6){animation-delay:.27s}
+.stagger>*:nth-child(7){animation-delay:.32s}
+.stagger>*:nth-child(8){animation-delay:.37s}
+@keyframes riseIn{from{opacity:0;transform:translateY(11px);filter:blur(4px)}to{opacity:1;transform:none;filter:blur(0)}}
+
+.p-head{
+  flex:none;display:flex;align-items:flex-end;gap:16px;
+  padding:26px 32px 16px;
+}
+.p-head .p-title{font-family:"Space Grotesk","Noto Sans SC",system-ui,sans-serif;font-size:21px;font-weight:700;letter-spacing:-.015em;line-height:1.2}
+.p-head .p-desc{font-size:12.5px;color:var(--ink-3);padding-bottom:2px}
+.p-head .p-actions{margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:1px}
+.p-body{flex:1;min-height:0;overflow:hidden}
+.p-scroll{height:100%;overflow-y:auto;padding:0 32px 40px}
+
+/* 通用小元件 */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-2);border:1px solid var(--line);border-radius:99px;padding:2px 9px;background:var(--surface)}
+.ghost-btn{font-size:12.5px;color:var(--ink-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 13px;background:var(--surface);transition:all .2s var(--ease)}
+.ghost-btn:hover{border-color:var(--ink-3);color:var(--ink);transform:translateY(-1px)}
+.primary-btn{
+  position:relative;overflow:hidden;background:var(--brand);color:var(--on-brand);
+  font-size:12.5px;font-weight:500;border-radius:var(--r-sm);padding:8px 18px;
+  transition:background-color .22s var(--ease),transform .22s var(--ease);
+}
+.primary-btn:hover{background:var(--brand-deep);transform:translateY(-1px)}
+.primary-btn::after{
+  content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);
+  animation:shimmer 3.6s ease-in-out infinite;
+}
+@keyframes shimmer{0%{left:-70%}55%{left:130%}100%{left:130%}}
+
+/* ============================================================
+   页面 1 · 聊天（AI 主界面）
+   ============================================================ */
+#page-chat{align-items:center}
+.chat-stage{flex:1;width:100%;max-width:760px;display:flex;flex-direction:column;padding:0 32px;overflow-y:auto}
+.chat-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding-bottom:10px}
+.orb-wrap{position:relative;width:158px;height:158px;display:grid;place-items:center}
+.orb{
+  width:120px;height:120px;border-radius:50%;
+  background:
+    radial-gradient(circle at 33% 29%,rgba(255,255,255,.86),transparent 45%),
+    radial-gradient(circle at 66% 74%,var(--orb-light),transparent 58%),
+    radial-gradient(circle at 50% 84%,var(--orb-warm),transparent 52%),
+    radial-gradient(circle at 50% 46%,var(--orb-core),var(--orb-edge));
+  box-shadow:0 16px 44px -14px rgba(20,60,50,.42),inset 0 -8px 22px rgba(0,30,24,.28);
+  animation:lifeBreathe 4.4s ease-in-out infinite;
+}
+.orb-ring{position:absolute;inset:6px;border-radius:50%;border:1px solid var(--brand-mid);opacity:.28}
+.orb-ring.r2{inset:0;border-style:dashed;opacity:.18}
+.chat-status{font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.chat-status .pulse{width:7px;height:7px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 0 rgba(20,107,87,.4);animation:pulseRing 2.6s ease-out infinite}
+@keyframes pulseRing{0%{box-shadow:0 0 0 0 var(--accent-soft)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.chat-greeting{font-family:"Space Grotesk","Noto Sans SC",system-ui,sans-serif;font-size:clamp(21px,2.6vw,29px);font-weight:700;letter-spacing:-.02em}
+.chat-greeting em{font-style:normal;color:var(--brand)}
+.bt span{display:inline-block;opacity:0;filter:blur(9px);transform:translateY(15px);animation:btIn .72s var(--ease-quart) both}
+@keyframes btIn{to{opacity:1;filter:blur(0);transform:none}}
+.chat-hint{color:var(--ink-3);font-size:13px;max-width:430px}
+
+.chat-msgs{display:none;flex:1;flex-direction:column;gap:18px;padding:30px 0 12px}
+.chat-msgs.show{display:flex}
+.msg{display:flex;gap:12px;max-width:88%;animation:riseIn .4s var(--ease-quart) both}
+.msg .m-avatar{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg.user .m-avatar{background:linear-gradient(135deg,var(--accent-mid),var(--accent));color:#fff}
+.msg.ai .m-avatar{background:var(--ink);color:var(--surface)}
+.m-bubble{padding:10px 14px;border-radius:var(--r-md);font-size:13.5px;line-height:1.7}
+.msg.user .m-bubble{background:var(--brand);color:var(--on-brand);border-bottom-right-radius:3px}
+.msg.ai .m-bubble{background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:3px}
+
+.suggest-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:6px 0 14px}
+.suggest{font-size:12.5px;color:var(--ink-2);border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 14px;transition:all .22s var(--ease)}
+.suggest:hover{border-color:var(--brand-mid);color:var(--brand-ink);background:var(--brand-soft);transform:translateY(-1px)}
+
+.composer{flex:none;width:100%;max-width:760px;padding:0 32px 24px}
+.composer-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px 12px 10px 16px;box-shadow:var(--shadow-1);transition:border-color .22s var(--ease),box-shadow .22s var(--ease)}
+.composer-box:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.composer-box textarea{width:100%;border:none;outline:none;resize:none;font-size:14px;line-height:1.6;background:transparent;color:var(--ink);min-height:24px;max-height:140px}
+.composer-foot{display:flex;align-items:center;gap:8px;margin-top:8px}
+.tool-btn{width:30px;height:30px;border-radius:var(--r-sm);display:grid;place-items:center;color:var(--ink-3);transition:all .18s var(--ease)}
+.tool-btn:hover{background:var(--surface-3);color:var(--ink)}
+.composer-meta{margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--ink-3)}
+.send-btn{width:34px;height:34px;border-radius:var(--r-sm);background:var(--ink);color:var(--surface);display:grid;place-items:center;transition:all .22s var(--ease)}
+.send-btn:hover{background:var(--brand);transform:translateY(-1px)}
+
+/* ============================================================
+   页面 2 · 文件管理
+   ============================================================ */
+#page-files .p-body{display:flex;overflow:hidden;border-top:1px solid var(--line)}
+.files-tree{flex:none;width:246px;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.tree-head{padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.tree-head span{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase}
+.tree-head button{color:var(--ink-3);font-size:15px;line-height:1}
+.tree-head button:hover{color:var(--ink)}
+/* 原工具轨并入此处：一列筛选胶囊 */
+.f-chip-row{display:flex;flex-wrap:wrap;gap:5px;padding:0 14px 12px;border-bottom:1px solid var(--line-soft)}
+.f-chip{font-size:11.5px;padding:3px 11px;border-radius:99px;color:var(--ink-2);border:1px solid var(--line);transition:all .2s var(--ease)}
+.f-chip:hover{color:var(--ink);border-color:var(--ink-3)}
+.f-chip.active{background:var(--brand-soft);color:var(--brand-ink);border-color:transparent;font-weight:500}
+.tree{flex:1;overflow-y:auto;padding:10px 8px 16px}
+.tree-folder{margin-top:6px}
+.tree-folder>.tree-row{font-weight:500;color:var(--ink)}
+.tree-row{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:var(--r-sm);font-size:13px;color:var(--ink-2);cursor:pointer;transition:background-color .16s,color .16s,transform .16s var(--ease);white-space:nowrap;overflow:hidden}
+.tree-row:hover{background:var(--surface-2);transform:translateX(2px)}
+.tree-row.active{background:var(--brand-soft);color:var(--brand-ink);font-weight:500}
+.tree-row .t-icon{flex:none;width:14px;text-align:center;opacity:.7}
+.tree-children{margin-left:15px;border-left:1px solid var(--line-soft);padding-left:6px}
+.tree-count{margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:10px;color:var(--ink-3)}
+
+.files-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.files-toolbar{flex:none;display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--surface)}
+.view-toggle{display:flex;background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-sm);padding:2px}
+.view-toggle button{font-size:12.5px;padding:4px 14px;border-radius:5px;color:var(--ink-2);transition:all .2s var(--ease)}
+.view-toggle button.active{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:var(--shadow-1)}
+.files-search{flex:1;max-width:300px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);padding:6px 12px;font-size:12.5px;outline:none;color:var(--ink);transition:all .2s var(--ease)}
+.files-search:focus{border-color:var(--brand);background:var(--surface)}
+.files-toolbar .spacer{flex:1}
+
+.files-view{flex:1;overflow:auto;position:relative;background:var(--bg)}
+.file-table{width:100%;border-collapse:collapse}
+.file-table th{text-align:left;font-family:ui-monospace,Consolas,monospace;font-size:10.5px;letter-spacing:.06em;color:var(--ink-3);font-weight:500;padding:10px 20px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:1}
+.file-table tbody tr{animation:riseIn .46s var(--ease-quart) both}
+.file-table tbody tr:nth-child(1){animation-delay:.03s}
+.file-table tbody tr:nth-child(2){animation-delay:.08s}
+.file-table tbody tr:nth-child(3){animation-delay:.13s}
+.file-table tbody tr:nth-child(4){animation-delay:.18s}
+.file-table tbody tr:nth-child(5){animation-delay:.23s}
+.file-table tbody tr:nth-child(6){animation-delay:.28s}
+.file-table tbody tr:nth-child(7){animation-delay:.33s}
+.file-table td{padding:9px 20px;border-bottom:1px solid var(--line-soft);font-size:13px;transition:background-color .16s}
+.file-table tr:hover td{background:var(--surface)}
+.f-name{display:flex;align-items:center;gap:9px;font-weight:500}
+/* 类型标签只用三色派生：主色 / 陶 / 墨 */
+.f-badge{flex:none;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:700}
+.b-md{background:var(--brand-soft);color:var(--brand-ink)}
+.b-pdf{background:var(--accent-soft);color:var(--accent-ink)}
+.b-img{background:var(--brand);color:var(--on-brand)}
+.b-url{background:var(--surface-3);color:var(--ink-2)}
+.f-meta{color:var(--ink-3);font-size:12px;font-family:ui-monospace,Consolas,monospace}
+.f-links{color:var(--brand-ink);font-size:12px;font-family:ui-monospace,Consolas,monospace}
+
+.graph-view{position:absolute;inset:0;display:none}
+.graph-view.show{display:block;animation:pageIn .4s var(--ease-quart) both}
+.graph-view svg{width:100%;height:100%;display:block}
+.g-edge{stroke:var(--line);stroke-width:1.2;fill:none}
+.g-edge.hot{stroke:var(--brand-mid);stroke-width:1.4}
+.flow{fill:var(--brand)}
+.flow-2{fill:var(--brand-mid)}
+.g-node{cursor:pointer}
+.g-node circle{transition:all .25s var(--ease)}
+.g-node:hover circle{stroke:var(--brand);stroke-width:2}
+.g-node text{font-size:11px;fill:var(--ink-2);font-family:"Noto Sans SC",system-ui,sans-serif}
+.g-node text.strong{fill:var(--ink);font-weight:600}
+.graph-legend{position:absolute;left:16px;bottom:14px;display:flex;gap:12px;font-size:11px;color:var(--ink-3);background:var(--surface);border:1px solid var(--line);padding:6px 13px;border-radius:99px}
+.graph-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+
+.files-statusbar{flex:none;height:30px;display:flex;align-items:center;gap:16px;padding:0 20px;border-top:1px solid var(--line);background:var(--surface);font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--ink-3)}
+
+/* ============================================================
+   页面 3 · 进化图谱
+   ============================================================ */
+.mod-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.evo-mod{border:1px solid var(--line);border-radius:var(--r-md);padding:12px 13px;background:var(--surface);cursor:pointer;transition:all .24s var(--ease)}
+.evo-mod:hover{transform:translateY(-2px);box-shadow:var(--shadow-1)}
+.evo-mod.on{border-color:var(--brand-mid);background:var(--brand-soft)}
+.evo-mod-head{display:flex;align-items:center;gap:7px}
+.evo-mod-head .m-name{font-size:13px;font-weight:600}
+.evo-mod-head .m-en{font-family:ui-monospace,Consolas,monospace;font-size:9.5px;color:var(--ink-3)}
+.evo-mod.on .m-en{color:var(--brand-ink);opacity:.75}
+.evo-mod p{font-size:11.5px;color:var(--ink-2);margin-top:6px;line-height:1.5}
+.evo-mod.on p{color:var(--brand-ink);opacity:.9}
+.switch{margin-left:auto;flex:none;width:28px;height:16px;border-radius:99px;background:var(--line);position:relative;transition:background-color .26s var(--ease)}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--surface);transition:transform .26s var(--ease);box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.evo-mod.on .switch{background:var(--brand)}
+.evo-mod.on .switch::after{transform:translateX(12px)}
+
+.beam-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 22px 8px;margin-bottom:22px;box-shadow:var(--shadow-1)}
+.beam-head{display:flex;align-items:baseline;gap:10px;margin-bottom:2px}
+.beam-title{font-size:13.5px;font-weight:600}
+.beam-sub{font-size:11.5px;color:var(--ink-3)}
+.beam-svg{width:100%;display:block}
+.bn1 rect{fill:var(--surface-3);stroke:var(--line)} .bn1 text{fill:var(--ink-2)}
+.bn2 rect{fill:var(--brand-soft);stroke:var(--brand-mid)} .bn2 text{fill:var(--brand-ink)}
+.bn3 rect{fill:var(--accent-soft);stroke:var(--accent-mid)} .bn3 text{fill:var(--accent-ink)}
+.bn rect{transition:stroke .25s var(--ease)}
+.beam-node:hover rect{stroke-width:1.4}
+.sp1{stop-color:var(--node-4)} .sp2{stop-color:var(--node-1)}
+.sp3{stop-color:var(--node-1)} .sp4{stop-color:var(--node-3)}
+
+.evo-day{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--ink-3);letter-spacing:.06em;margin:20px 0 12px;display:flex;align-items:center;gap:12px}
+.evo-day::after{content:"";flex:1;height:1px;background:var(--line)}
+.evo-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 18px;margin-bottom:10px;border-left:3px solid var(--brand);transition:transform .26s var(--ease),box-shadow .26s var(--ease)}
+.evo-card:hover{transform:translateX(3px);box-shadow:var(--shadow-2)}
+.evo-card.attn{border-left-color:var(--accent)}
+.evo-card-title{font-size:13.5px;font-weight:600;margin-bottom:7px}
+.evo-chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* 链路三色：对话=墨 / 文件=主色 / 知识点=陶 */
+.chain-node{font-size:11.5px;padding:3px 10px;border-radius:99px;background:var(--surface-3);color:var(--ink-2);border:1px solid transparent}
+.chain-node.c-chat{background:var(--surface-3);color:var(--ink-2)}
+.chain-node.c-file{background:var(--brand-soft);color:var(--brand-ink)}
+.chain-node.c-know{background:var(--accent-soft);color:var(--accent-ink)}
+.chain-sep{color:var(--ink-3);font-size:11px}
+.evo-card-meta{margin-top:8px;font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--ink-3)}
+
+/* ============================================================
+   页面 4 · 知识总结
+   ============================================================ */
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.stat-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:16px 18px 14px;position:relative;overflow:hidden;
+  transition:transform .28s var(--ease),box-shadow .28s var(--ease)
+}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+.stat-card::after{
+  content:"";position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .3s var(--ease);
+  background:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),var(--brand-soft),transparent 68%)
+}
+.stat-card:hover::after{opacity:1}
+.stat-label{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase}
+.stat-value{font-family:"Space Grotesk",system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:4px}
+.stat-value small{font-size:13px;font-weight:500;color:var(--ink-2);margin-left:3px}
+.stat-sub{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.stat-bar{height:4px;border-radius:99px;background:var(--surface-3);margin-top:10px;overflow:hidden}
+.stat-bar i{display:block;height:100%;border-radius:99px;background:var(--brand);width:0;transition:width 1.1s var(--ease-quart)}
+.heat-row{display:flex;gap:3px;margin-top:10px;align-items:flex-end;height:20px}
+.heat-row i{flex:1;height:100%;border-radius:3px;background:var(--brand-soft);transform:scaleY(.18);transform-origin:bottom;transition:transform .7s var(--ease-quart)}
+.heat-row i.l1{background:var(--brand-soft)}
+.heat-row i.l2{background:var(--brand-mid)}
+.heat-row i.l3{background:var(--brand)}
+.heat-row i.l4{background:var(--accent)}
+.heat-row i.hot{background:var(--accent)}
+
+.summary-grid{display:grid;grid-template-columns:5fr 7fr;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);display:flex;flex-direction:column;min-height:372px;position:relative}
+.panel-head{display:flex;align-items:center;gap:10px;padding:14px 18px 12px;border-bottom:1px solid var(--line-soft)}
+.panel-title{font-size:13.5px;font-weight:600}
+.panel-sub{font-size:11px;color:var(--ink-3)}
+.rank-list{padding:6px 0}
+.rank-row{display:flex;align-items:center;gap:12px;padding:9px 18px;transition:background-color .16s,transform .2s var(--ease)}
+.rank-row:hover{background:var(--surface-2);transform:translateX(2px)}
+.rank-no{flex:none;width:20px;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--ink-3);text-align:center}
+.rank-row:nth-child(-n+3) .rank-no{color:var(--brand);font-weight:700}
+.rank-body{flex:1;min-width:0}
+.rank-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-bar{height:3px;border-radius:99px;background:var(--surface-3);margin-top:5px;overflow:hidden}
+.rank-bar i{display:block;height:100%;border-radius:99px;width:0;background:var(--brand-mid);transition:width 1s var(--ease-quart)}
+/* 第一名用陶色：值得注意的产出 */
+.rank-row:first-child .rank-bar i{background:var(--accent)}
+.rank-count{flex:none;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--ink-2)}
+.rank-row:first-child .rank-count{color:var(--accent-ink);font-weight:600}
+.sum-tabs{display:flex;gap:2px;margin-left:auto;background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-sm);padding:2px}
+.sum-tabs button{font-size:12px;padding:3px 12px;border-radius:5px;color:var(--ink-2);transition:all .2s var(--ease)}
+.sum-tabs button.active{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:var(--shadow-1)}
+.sum-list{padding:8px 0;overflow-y:auto}
+.sum-item{padding:12px 18px;border-bottom:1px solid var(--line-soft)}
+.sum-item:last-child{border-bottom:none}
+.sum-item-head{display:flex;align-items:baseline;gap:10px}
+.sum-date{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--brand-ink);font-weight:500}
+.sum-title{font-size:13px;font-weight:600}
+.sum-text{font-size:12.5px;color:var(--ink-2);margin-top:4px;line-height:1.65}
+.sum-tags{display:flex;gap:6px;margin-top:7px}
+.sum-tags .chip{font-size:10.5px;padding:1px 8px}
+.sum-tags .chip.todo{border-color:var(--accent-mid);color:var(--accent-ink)}
+
+/* ============================================================
+   页面 5 · 设置 & 我的
+   ============================================================ */
+#page-settings .p-body{display:flex;overflow:hidden;border-top:1px solid var(--line)}
+.settings-nav{flex:none;width:216px;background:var(--surface);border-right:1px solid var(--line);padding:14px 10px;overflow-y:auto}
+.s-nav-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 10px;border-radius:var(--r-sm);font-size:13px;color:var(--ink-2);transition:all .18s var(--ease)}
+.s-nav-item:hover{background:var(--surface-2);color:var(--ink);transform:translateX(2px)}
+.s-nav-item.active{background:var(--brand-soft);color:var(--brand-ink);font-weight:500}
+.s-nav-sep{height:1px;background:var(--line-soft);margin:8px 6px}
+.settings-detail{flex:1;overflow-y:auto;padding:24px 36px 48px}
+.settings-detail h2{font-family:"Space Grotesk",system-ui,sans-serif;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.settings-detail .s-desc{color:var(--ink-3);font-size:12.5px;margin:2px 0 22px}
+.s-section{max-width:560px;margin-bottom:26px}
+.s-section-title{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase;margin-bottom:10px}
+
+/* L2 BorderBeam：沿边框运行的光（主色→透明） */
+.beam-card{position:relative;isolation:isolate;overflow:hidden;border-radius:var(--r-md)}
+.beam-card::before{
+  content:"";position:absolute;inset:-1px;border-radius:inherit;z-index:0;
+  background:conic-gradient(from 0deg,transparent 0deg,transparent 296deg,var(--brand) 340deg,transparent 360deg);
+  animation:beamSpin 4.8s linear infinite;
+}
+.beam-card::after{content:"";position:absolute;inset:1px;border-radius:inherit;background:var(--surface);z-index:1}
+.beam-card>*{position:relative;z-index:2}
+@keyframes beamSpin{to{transform:rotate(360deg)}}
+
+.profile-card{display:flex;align-items:center;gap:16px;padding:18px}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent-mid),var(--accent));display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex:none}
+.profile-card .avatar{width:52px;height:52px;font-size:20px}
+.profile-name{font-size:15px;font-weight:600}
+.profile-meta{font-size:12px;color:var(--ink-3);font-family:ui-monospace,Consolas,monospace}
+.form-row{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.form-row label{font-size:12.5px;color:var(--ink-2);font-weight:500}
+.form-row input,.form-row select{border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;background:var(--surface);outline:none;color:var(--ink);transition:all .2s var(--ease)}
+.form-row input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.s-placeholder{border:1.5px dashed var(--line);border-radius:var(--r-md);padding:32px 24px;text-align:center;color:var(--ink-3);font-size:12.5px;max-width:560px}
+.s-placeholder b{display:block;font-size:13.5px;color:var(--ink-2);margin-bottom:4px}
+.swatch-row{display:flex;gap:10px;margin-top:4px}
+.swatch{flex:1;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.swatch .sw-bar{height:34px}
+.swatch .sw-meta{padding:9px 12px;font-size:11.5px;color:var(--ink-2)}
+.swatch .sw-meta b{display:block;font-size:12.5px;color:var(--ink);font-weight:600}
+.swatch .sw-meta code{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--ink-3)}
+
+/* ============================================================
+   AI 悬浮球 + 聊天小窗（全局常驻，读取当前页面上下文）
+   ============================================================ */
+.ai-fab{
+  position:fixed;right:24px;bottom:24px;z-index:80;
+  width:58px;height:58px;border-radius:50%;
+  display:grid;place-items:center;
+  background:var(--surface);border:1px solid var(--line);
+  box-shadow:0 10px 26px -10px rgba(20,26,24,.34),0 0 0 6px var(--brand-soft);
+  transition:transform .28s var(--ease),box-shadow .28s var(--ease);
+}
+.ai-fab:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 18px 38px -12px rgba(20,26,24,.42),0 0 0 7px var(--brand-soft)}
+.ai-fab:active{transform:translateY(-1px) scale(1.01)}
+.ai-fab .fab-orb{
+  width:30px;height:30px;border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 30%,rgba(255,255,255,.72),transparent 46%),
+    radial-gradient(circle at 64% 74%,var(--orb-light),transparent 58%),
+    radial-gradient(circle at 50% 50%,var(--orb-core),var(--orb-edge));
+  box-shadow:0 4px 12px -4px var(--orb-warm);
+  animation:lifeBreathe 4.4s ease-in-out infinite;
+}
+.ai-fab .fab-badge{
+  position:absolute;top:1px;right:1px;min-width:18px;height:18px;padding:0 4px;
+  border-radius:99px;background:var(--accent);color:#fff;
+  font-size:10px;font-weight:700;line-height:1;display:grid;place-items:center;
+  border:2px solid var(--surface);transition:opacity .2s var(--ease);
+}
+.ai-fab.open{box-shadow:0 10px 26px -10px rgba(20,26,24,.34),0 0 0 4px var(--brand-soft)}
+.ai-fab.open .fab-badge{opacity:0}
+
+/* 一次性引导气泡：说明这颗球是干什么的 */
+.fab-hint{
+  position:fixed;right:96px;bottom:36px;z-index:80;
+  background:var(--surface);border:1px solid var(--line);border-radius:99px;
+  padding:7px 14px;font-size:12px;color:var(--ink-2);white-space:nowrap;
+  box-shadow:var(--shadow-2);opacity:0;transform:translateX(8px);pointer-events:none;
+  transition:opacity .3s var(--ease),transform .3s var(--ease-quart);
+}
+.fab-hint.show{opacity:1;transform:none}
+.fab-hint::after{
+  content:"";position:absolute;right:-5px;top:50%;width:8px;height:8px;
+  background:var(--surface);border-top:1px solid var(--line);border-right:1px solid var(--line);
+  transform:translateY(-50%) rotate(45deg);
+}
+
+.ai-pop{
+  position:fixed;right:24px;bottom:96px;z-index:79;
+  width:356px;max-height:min(540px,calc(100vh - 150px));
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:calc(var(--r-md) + 4px);
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:var(--shadow-3);
+  transform-origin:100% 100%;opacity:0;transform:translateY(12px) scale(.95);pointer-events:none;
+  visibility:hidden;
+  transition:opacity .22s var(--ease),transform .3s var(--ease-quart),visibility 0s linear .32s;
+}
+.ai-pop.open{
+  opacity:1;transform:none;pointer-events:auto;visibility:visible;
+  transition:opacity .22s var(--ease),transform .3s var(--ease-quart),visibility 0s;
+}
+.ai-pop-head{flex:none;display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--line-soft)}
+.life-orb.sm{width:24px;height:24px;box-shadow:none}
+.ai-pop-title{display:flex;flex-direction:column;min-width:0}
+.ai-pop-title b{font-size:13px;font-weight:600;line-height:1.3}
+.ai-pop-title span{font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-pop-title em{font-style:normal;color:var(--brand-ink);font-weight:500}
+.ai-pop-close{margin-left:auto;color:var(--ink-3);width:26px;height:26px;border-radius:7px;display:grid;place-items:center;flex:none;transition:all .18s var(--ease)}
+.ai-pop-close:hover{background:var(--surface-3);color:var(--ink)}
+.ai-quick{flex:none;display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px;border-bottom:1px solid var(--line-soft)}
+.ai-quick button{font-size:11.5px;padding:4px 11px;border-radius:99px;border:1px solid var(--line);color:var(--ink-2);transition:all .2s var(--ease)}
+.ai-quick button:hover{border-color:var(--brand-mid);color:var(--brand-ink);background:var(--brand-soft)}
+.ai-pop-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:11px}
+.ai-pop .m-bubble{font-size:12.5px}
+.ai-pop .msg{max-width:94%}
+.ai-pop-input{flex:none;display:flex;align-items:center;gap:8px;padding:11px 12px;border-top:1px solid var(--line-soft)}
+.ai-pop-input input{flex:1;min-width:0;border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px;font-size:12.5px;outline:none;background:var(--surface-2);color:var(--ink);transition:all .2s var(--ease)}
+.ai-pop-input input:focus{border-color:var(--brand);background:var(--surface)}
+.ai-pop-input .send-btn{width:32px;height:32px;flex:none}
+
+/* ============================================================
+   响应式 / 动效偏好
+   ============================================================ */
+@media (max-width:1080px){
+  :root{--sidebar-w:66px}
+  .brand-text,.brand-tag,.nav-text,.nav-group-label,.proto-box,.theme-toggle span{display:none}
+  .brand{justify-content:center;padding:2px 0 18px}
+  .nav-group{margin-bottom:10px}
+  .nav-item{justify-content:center;padding:10px 0}
+  .theme-toggle{justify-content:center;padding:9px 0}
+  .summary-grid{grid-template-columns:1fr}
+  .stat-strip{grid-template-columns:repeat(2,1fr)}
+  .mod-strip{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:620px){
+  .ai-fab{right:16px;bottom:16px}
+  .ai-pop{right:16px;left:16px;width:auto;bottom:88px;max-height:min(520px,calc(100vh - 130px))}
+  .fab-hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
+</style>
+</head>
+
+<body data-page-node-id="fuSZiXHQJFBUUMn846OfPW">
+<div class="app" data-page-node-id="IDPyY1Yb6BILOZW8YkJaSF">
+
+  <!-- ===================== 左侧常驻导航 ===================== -->
+  <aside class="sidebar" data-page-node-id="K8F71Z8gBHBD9CLM8CMQMG">
+    <div class="brand" data-page-node-id="ns38koHaHoa58EJoeF9YmD">
+      <div class="brand-mark" data-page-node-id="ETCpIhtIGTGKPoQW43X4nG"></div>
+      <div class="brand-text" data-page-node-id="FG14DsN2bVJJR5lO6uXAG0">
+        <span class="brand-name" data-page-node-id="D3fsCirEOEmFylQNrA91RI">知识系统</span>
+        <span class="brand-sub" data-page-node-id="VTCdFnIg8zVizBtfCcBHaO">个人 AI 知识管家</span>
+      </div>
+      <span class="brand-tag" data-page-node-id="Fw4O0MSPp6BM9OWUbQM2su">v0.4</span>
+    </div>
+
+    <div class="nav-group" data-page-node-id="aDFXABT5r0iOa2BkyoYLfi">
+      <div class="nav-group-label" data-page-node-id="W7IbjTZsBMKxMYuSKwEtud">知识空间</div>
+      <nav class="nav" id="nav" data-page-node-id="1NPMp9yhL0TBg56K93zNiQ">
+        <button class="nav-item active" data-page="chat" data-page-node-id="rCFGXhNtrBA0wyOZIzhR0F">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" data-page-node-id="9pcZ5t6WS1EPVUn5xbNc4n"><path d="M21 12a8 8 0 01-8 8H7l-4 3V12a8 8 0 018-8h2a8 8 0 018 8z" data-page-node-id="ALMQqYlpGeFBpqCHWJBS2g"/></svg>
+          <span class="nav-text" data-page-node-id="pvbXCmNFVu04TjarZxTGz3"><b data-page-node-id="iYU7CH2BeKv4BGkHaACEms">聊天</b><small data-page-node-id="tmcK1e1VdewTHBLPuWhRHh">和 AI 对话，随手记录想法</small></span>
+        </button>
+        <button class="nav-item" data-page="files" data-page-node-id="OukbjU1BbScDxBaPNVgOY2">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" data-page-node-id="csPTOB5yMnsBkOBlKg5zaX"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" data-page-node-id="viLA4rdZIvnQXYBAoZOedQ"/></svg>
+          <span class="nav-text" data-page-node-id="j9ySwgT7BYlPGqpCIgRDmi"><b data-page-node-id="4pQv2674C4YVTLsFNs7THL">文件管理</b><small data-page-node-id="iaaVvQ8xdlzQowpx2r9SFu">素材、笔记与它们的关联</small></span>
+        </button>
+        <button class="nav-item" data-page="graph" data-page-node-id="YZkX0ziM9nUVG495UIkg7W">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" data-page-node-id="0YfQJ4H4buCPQFHFs1SDP6"><circle cx="6" cy="7" r="2.6" data-page-node-id="MWxiyxUiOYZjgzj2js0bKi"/><circle cx="18" cy="7" r="2.6" data-page-node-id="tPgVnCGFi6gil3fOzCTuV1"/><circle cx="12" cy="18" r="2.6" data-page-node-id="GNNdVZZEp4goV6zgr74a9n"/><path d="M8.2 8.6l2.6 7M15.8 8.6l-2.6 7M8.6 7h6.8" data-page-node-id="SC1TZ0vRkguvzdz7rHBbd1"/></svg>
+          <span class="nav-text" data-page-node-id="QwFN3xGzqNMAAX2seA3juv"><b data-page-node-id="MWf0NphMO1ym2KHE8nh0NO">进化图谱</b><small data-page-node-id="z94HaCCxslyyqOiZUoHfom">信息如何一步步长成知识</small></span>
+        </button>
+        <button class="nav-item" data-page="summary" data-page-node-id="t9UHioNwcRWbtmdpVVR4RI">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" data-page-node-id="FMsIBkzNG0LDMIHNH94Nnb"><path d="M5 20V10M12 20V4M19 20v-7" data-page-node-id="xxMqgbAxuEhZNaNNJ01Qkq"/></svg>
+          <span class="nav-text" data-page-node-id="eWgVaP4GYBro8rHJssGWmh"><b data-page-node-id="LkvGkEcPiOJXKhZS4xozY1">知识总结</b><small data-page-node-id="Yrgp8ET89o7tQMxFiqXQyp">数据回顾与 AI 自动总结</small></span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="nav-group" data-page-node-id="9XPfvKATuFEnNH0x9YY84R">
+      <div class="nav-group-label" data-page-node-id="zwDQY2d6zwlwm3SdBp5Mq1">系统</div>
+      <nav class="nav" data-page-node-id="lqkRpEYZmBDSpGbjWAlYdx">
+        <button class="nav-item" data-page="settings" data-page-node-id="MjYNFInD43SKeAEKXcuAaL">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" data-page-node-id="OJOxuloqhASgRY3hNvVXAj"><circle cx="12" cy="12" r="3" data-page-node-id="mOUNxXCZDW9iVIuG8L9aiK"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 007 19.4a1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 14.6H3a2 2 0 110-4h.1A1.6 1.6 0 004.6 7a1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 0010 3.4V3a2 2 0 114 0v.1a1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00.3 1.8v.1a1.6 1.6 0 001.5 1h.1a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z" data-page-node-id="BlXnGAwlbLwpHLUFuUmmEX"/></svg>
+          <span class="nav-text" data-page-node-id="dgZfLdoKlaopYekKYSy2x0"><b data-page-node-id="05uCZS1Up7O8816z2DTC6I">设置 &amp; 我的</b><small data-page-node-id="ZjeNZGchwc3z6w8R5zYzjt">账户、外观与系统偏好</small></span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="sidebar-foot" data-page-node-id="F3voRigS5MQpo51qpH3Zyz">
+      <div class="proto-box" data-page-node-id="ofTFUNynCIExHeEntHWjoY">
+        <div class="proto-label" data-page-node-id="QFvod9Xp1OsoYPsP5cEuGT">原型控件 · 主体色</div>
+        <div class="brand-dots" id="brandDots" data-page-node-id="HtsacJhBBuHJ4OLSduqrL6">
+          <button class="bdot active" data-brand="indigo" title="靛 Indigo" data-page-node-id="kQWbXGEiC5AB9ggr26a1k5"><i data-page-node-id="CCpM3ZujFJSUyHF2v01egd"></i><span data-page-node-id="ONPq4e3UcwLvU6XHsyT0gZ">靛</span></button>
+          <button class="bdot" data-brand="steel" title="钢 Steel" data-page-node-id="LSNzOEkSRaii6Aji2BL43A"><i data-page-node-id="BQcxIpfgnAyxRTekoDAiSs"></i><span data-page-node-id="5FoDGEdBOF3wZWpoRxv7ib">钢</span></button>
+          <button class="bdot" data-brand="claret" title="绛 Claret" data-page-node-id="5hB3qt0zfwBI7eKxIH2S1W"><i data-page-node-id="DIF0TnxFxtuscnmMrCoEtG"></i><span data-page-node-id="zwkQGn26TmbLv4XJGthAtn">绛</span></button>
+        </div>
+      </div>
+      <button class="theme-toggle" id="themeToggle" data-page-node-id="b6B8oRx9C12g9v4QWO1pTa">
+        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" data-page-node-id="3mF8AgWuZj6VmPGjkzeMWo"><circle cx="12" cy="12" r="4" data-page-node-id="o6D6CbJ4qLwhfjkndKtWcW"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" data-page-node-id="bPqscjzCSFCGIOkHX2tk63"/></svg>
+        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" data-page-node-id="okY6PmICWphC9K50lq4VTF"><path d="M21 13.5A8.5 8.5 0 0110.5 3a8.5 8.5 0 1010.5 10.5z" data-page-node-id="99HPGql3dzmnBFITQCzviv"/></svg>
+        <span id="themeLabel" data-page-node-id="gWGFQSnyi5cHyiEuOn4iD5">切换黑夜</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================== 内容区 ===================== -->
+  <main class="content" data-page-node-id="IHzHvBC9G9LavATuaMPOi2">
+
+    <!-- ---------- 聊天 ---------- -->
+    <section class="page active" id="page-chat" data-page-node-id="v899vtH2WAv36xx5cMYjSM">
+      <div class="chat-stage" id="chatStage" data-page-node-id="sfAz7h0xIhNHwvOBI4Blnc">
+        <div class="chat-hero" id="chatHero" data-page-node-id="nLXGnbgA5Z63tIRwDRjMc3">
+          <div class="orb-wrap" data-page-node-id="V8cjwBStGBqSpj7UHmPo1B">
+            <div class="orb-ring" data-page-node-id="bX8fPfxahlLULmQS8ETDtF"></div>
+            <div class="orb-ring r2" data-page-node-id="1kdy0LLaPqzXKRJTymqREA"></div>
+            <div class="orb" data-page-node-id="u5ouTrQQhJE0mfw5BJuv8Y"></div>
+          </div>
+          <div class="chat-status" data-page-node-id="JX7TrCbE8pHcDPpyUYjXKC"><span class="pulse" data-page-node-id="Vb2Dwcf7bnil8pN7C2F3d6"></span>AI 就绪 · 已索引 128 个文件 · 342 条关联</div>
+          <h1 class="chat-greeting" id="greeting" data-text="下午好，今天想整理点什么？" data-em="整理" data-page-node-id="eqlAjI9iYvGqwtXb7iaEif"></h1>
+          <p class="chat-hint" data-page-node-id="7rw12Sp2pHU84C1t2EM7kx">我会读取你存入的文件和对话，帮你把散落的信息连成知识。</p>
+        </div>
+        <div class="chat-msgs" id="chatMsgs" data-page-node-id="CVeNONUmSlz0schVqA7Daq"></div>
+        <div class="suggest-row stagger" data-page-node-id="UTp52VJMepAzPOlWUbfwGE">
+          <button class="suggest" data-q="帮我总结本周新增的笔记" data-page-node-id="WnEmbNw8OFweRJuJiBpqNN">总结本周新增笔记</button>
+          <button class="suggest" data-q="哪些文件之间存在关联？" data-page-node-id="xEuHTGZeN5Va8jKAEDTv73">找出相关联的文件</button>
+          <button class="suggest" data-q="回顾我们昨天讨论的内容" data-page-node-id="pyHr6j9XxFIpTU0KoY6Vw0">回顾昨天的讨论</button>
+          <button class="suggest" data-q="把最近的灵感整理成知识点" data-page-node-id="a1NkRYcwA1YTZWaHD5jQNv">整理最近的灵感</button>
+        </div>
+      </div>
+      <div class="composer" data-page-node-id="DUMtMnvDbHGPCngoRTXPKK">
+        <div class="composer-box" data-page-node-id="p7fhZgRpwpdYJ58xBchxDa">
+          <textarea id="chatInput" rows="1" placeholder="问点什么，或让我帮你整理知识…"></textarea>
+          <div class="composer-foot" data-page-node-id="a5a4Pjl27RLK3LsBK8CVMt">
+            <button class="tool-btn" title="附加文件" data-page-node-id="yvbLKpzRiF3ChBdRu4fnEE">＋</button>
+            <button class="tool-btn" title="引用知识" data-page-node-id="aKcVhgSvUAO1ItQ8SDwiYt">⌘</button>
+            <span class="composer-meta" data-page-node-id="AV7lJktSeEuAf8WjXu4A6J">上下文：全库</span>
+            <button class="send-btn" id="chatSend" title="发送" data-page-node-id="b6ZHF0sJfcZJYShxYBIYfz">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="FIQQPEucZS0HbkmKnhSV2G"><path d="M12 19V5M5 12l7-7 7 7" data-page-node-id="cFdepj8naKhtXZL1ndeUAL"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 文件管理 ---------- -->
+    <section class="page" id="page-files" data-page-node-id="7dXZG9TQTLJUmO3nTRQAr5">
+      <div class="p-head" data-page-node-id="W3a2uxnJ54VQO2JHAXedUx">
+        <span class="p-title" data-page-node-id="RTAaOmqoqhl60116nbUBcS">文件管理</span>
+        <span class="p-desc" data-page-node-id="z8vjw9GqOYAzNxxuY6sww3">你存进来的一切，以及它们之间的连接</span>
+        <div class="p-actions" data-page-node-id="3w0l0CvypdBs1CglhOSljD">
+          <button class="ghost-btn" data-page-node-id="GNcZP2z2GgBY1WuEHRtusw">导入文件</button>
+          <button class="primary-btn" data-page-node-id="qdb8CSqeXDVuAUP30FBzuH">AI 整理</button>
+        </div>
+      </div>
+
+      <div class="p-body" data-page-node-id="tlTJRhI9acqoXmdVAx8ZDb">
+        <aside class="files-tree" data-page-node-id="JKwoSYEjAggivpOhdSQWd1">
+          <div class="tree-head" data-page-node-id="JuTk4rQKJs9LXazzB6rgPD"><span data-page-node-id="HkW9aBIrRWTbSlDSUWOJGb">知识库</span><button title="新建" data-page-node-id="SW43PFiVEb3nPyOLDlIG3j">＋</button></div>
+          <div class="f-chip-row" id="filterRow" data-page-node-id="4yQXDVDKHaZ7OkpUCwVHIp">
+            <button class="f-chip active" data-page-node-id="jnHULucYkAOYutlZ8tkHG9">全部</button>
+            <button class="f-chip" data-page-node-id="VrwMFjps0pT8BWQkJuqOvv">最近</button>
+            <button class="f-chip" data-page-node-id="AgXMU9B2GXBceq6pdJNky6">标签</button>
+            <button class="f-chip" data-page-node-id="1Bzu0JFv5OPrKf0Dta74Se">收藏</button>
+            <button class="f-chip" data-page-node-id="riSQ9l07kwBOWPxoBKE1WM">回收站</button>
+          </div>
+          <div class="tree" data-page-node-id="ncwehHBHdCtzEMPSgQwRHV">
+            <div class="tree-folder" data-page-node-id="w6CutMV3E9Wh3ZwAwW2EH5">
+              <div class="tree-row" data-page-node-id="5wGRErqU2jipt1OFl8LnTk"><span class="t-icon" data-page-node-id="r5rnGbCCvk4aDl5QaspWXM">▾</span>📁 笔记<span class="tree-count" data-page-node-id="Zi3SQn1OUI47uwCUgVEpGf">46</span></div>
+              <div class="tree-children" data-page-node-id="rAigRzwSBxnMigy33j156u">
+                <div class="tree-row active" data-page-node-id="UDMHctflCvEVUugQJv4w2v"><span class="t-icon" data-page-node-id="HsAO0sjDoinqPCMkFV99L3">·</span>增长模型.md</div>
+                <div class="tree-row" data-page-node-id="F4tEXn4cVEzX9fuSWBfFCO"><span class="t-icon" data-page-node-id="lbJpDLZHDPLCE0v7tWbsWX">·</span>小红书运营手册.md</div>
+                <div class="tree-row" data-page-node-id="k3JQC99wsnLwzrfjvji4Tn"><span class="t-icon" data-page-node-id="YPM8cRzPuuGtCVAwlSXzzO">·</span>AI 产品观察.md</div>
+                <div class="tree-row" data-page-node-id="kTreGvAq7G4jVdtDEdgbHm"><span class="t-icon" data-page-node-id="2TwNfSrSOw192bhlc4Fb1k">·</span>读书 · 认知觉醒.md</div>
+              </div>
+            </div>
+            <div class="tree-folder" data-page-node-id="x6vzGMznszrsvCsfPAGXdR">
+              <div class="tree-row" data-page-node-id="O7Bfsa3HcPRNACX3SY6LfF"><span class="t-icon" data-page-node-id="CrS4WGSmXIFcsl2yxsp0Fz">▾</span>📁 项目<span class="tree-count" data-page-node-id="7yz6h8RnsFU0KSDZezFRq0">23</span></div>
+              <div class="tree-children" data-page-node-id="lDHNIHO8Rq8VA5ce3bqu1N">
+                <div class="tree-row" data-page-node-id="Ox1xvRISrI31ZIDKA6gmBz"><span class="t-icon" data-page-node-id="ryOLdzDUHIdQlxubXdEObG">·</span>知识系统 v0.3.md</div>
+                <div class="tree-row" data-page-node-id="5cUbYc26AhALlClIVmGm6C"><span class="t-icon" data-page-node-id="sZcPDPmB7D3LMPFukQj6H0">·</span>竞品调研.pdf</div>
+              </div>
+            </div>
+            <div class="tree-folder" data-page-node-id="kaCe40SGNnRn3NmdSK1EhW"><div class="tree-row" data-page-node-id="zCmZv4rWBNhy7r6ofGpBhm"><span class="t-icon" data-page-node-id="6xxr0D0q8B96uEThFaQQm5">▸</span>📁 灵感<span class="tree-count" data-page-node-id="w2y3KRLtcds3mkXlEumfmB">38</span></div></div>
+            <div class="tree-folder" data-page-node-id="E7R4xB5wdDPHlVI9MuZrvy"><div class="tree-row" data-page-node-id="BfY6IrVpkFmTxMin0l4lyW"><span class="t-icon" data-page-node-id="3vtKVn10FH10RIWidGXdAL">▸</span>📁 附件<span class="tree-count" data-page-node-id="UCJX1QeV7wgh54V76rWoVU">21</span></div></div>
+          </div>
+        </aside>
+
+        <div class="files-main" data-page-node-id="WKFC7mxBhFpC9eFGqIUN3x">
+          <div class="files-toolbar" data-page-node-id="z583AxoaqXE2BxF73rHtOj">
+            <div class="view-toggle" id="viewToggle" data-page-node-id="ijbuHmCX7MaeRKtnsyV6LB">
+              <button class="active" data-view="list" data-page-node-id="HCzU6PfpaXRDifhj9Rtxj7">列表</button>
+              <button data-view="graph" data-page-node-id="0nzkNdZl8Ew3PSNaq7lkMN">关联图</button>
+            </div>
+            <input class="files-search" placeholder="搜索文件名、内容、标签…" data-page-node-id="PDjv19TyMIIXJsUPSGpaL2">
+            <div class="spacer" data-page-node-id="5Zg0VTRoC5vNqnbZEfV6TX"></div>
+            <button class="ghost-btn" data-page-node-id="2iXJ1SWJi9EQ2DhEuoQJi7">按更新时间</button>
+          </div>
+
+          <div class="files-view" data-page-node-id="WT74XCWtYD01eEh8CHMZGq">
+            <table class="file-table" id="listView" data-page-node-id="qAohjjsVGhUoNO7tEdXsQr">
+              <thead data-page-node-id="VWlEonJwgJjZ1ehkETGqWS"><tr data-page-node-id="n3rHjXkCR3Rce8rlN8CNgf"><th style="width:42%" data-page-node-id="ODtdZeR6HvKjtOnQVHzEr6">名称</th><th data-page-node-id="n1OE8bZUO62Vbwvp0QuWO4">类型</th><th data-page-node-id="JH5lXA6zAEtZf4edR5pUVz">更新时间</th><th data-page-node-id="wodNCfMAnyAa5ywpb1c0UE">关联</th></tr></thead>
+              <tbody data-page-node-id="kt6GqSzp3x4qRFVYJp4LAe">
+                <tr data-page-node-id="gFH8kHv8agoSGReP8cYnrD"><td data-page-node-id="eDYuRKhnZMgSYPNhz50S1G"><div class="f-name" data-page-node-id="STK5HEu2xFvvqNFDFEHa7H"><span class="f-badge b-md" data-page-node-id="uIjJtBYAkL9ucEyTkPlHKB">M</span>增长模型.md</div></td><td class="f-meta" data-page-node-id="cCkFyyjYfgIVq5bfwXWXjg">Markdown</td><td class="f-meta" data-page-node-id="HqUlej5mLOd5z06AahiMjL">10 分钟前</td><td class="f-links" data-page-node-id="3AKdy692JttNlk3HgCzdtp">◈ 6</td></tr>
+                <tr data-page-node-id="zdKVzaD7tOQAAUlMzYfua6"><td data-page-node-id="t7KxZDSSvdDFRuZPhLY4kY"><div class="f-name" data-page-node-id="KvfkYNJEwRv6Hy2HLJRbPl"><span class="f-badge b-md" data-page-node-id="9bhIgvlgmiCXCcpkmLIo2q">M</span>小红书运营手册.md</div></td><td class="f-meta" data-page-node-id="EGCvXUXKh6GvQ4Kkw8nzBl">Markdown</td><td class="f-meta" data-page-node-id="fdmm9WWFEWeIkQmus3BAvm">昨天 21:04</td><td class="f-links" data-page-node-id="yyymLkKtfQGG8MYSSVZZRF">◈ 9</td></tr>
+                <tr data-page-node-id="lF9XN97a0bxZQFKBGPdE7n"><td data-page-node-id="tOkN8Z1plurLBCog8BmBV5"><div class="f-name" data-page-node-id="bIi8zcUbrJhrTTPtetb8TN"><span class="f-badge b-md" data-page-node-id="9QIBDLrucXENY8FoMTr1ug">M</span>AI 产品观察.md</div></td><td class="f-meta" data-page-node-id="RSpC2kkNAfS2mldzU2n1HG">Markdown</td><td class="f-meta" data-page-node-id="t6q8m87uIqQQDj8VHjjTZz">昨天 18:32</td><td class="f-links" data-page-node-id="ZxqZW6ZFxnG1fkKNCjmLNS">◈ 4</td></tr>
+                <tr data-page-node-id="HuXua7VWexbkbhdC6kFumZ"><td data-page-node-id="RKZLGQwIGMaeUgRVRL4vDU"><div class="f-name" data-page-node-id="PkDAfNuAtYwuCwXqEBfkt6"><span class="f-badge b-pdf" data-page-node-id="SmqPsoSORXngyIsWfFfAmy">P</span>竞品调研.pdf</div></td><td class="f-meta" data-page-node-id="O8XhEpU42H1KBxyjwU7jzo">PDF · 2.4 MB</td><td class="f-meta" data-page-node-id="Ut0IPNC5wTNP7kvbfir54s">3 天前</td><td class="f-links" data-page-node-id="6oFmAF7iGn1d58rgs8lOVQ">◈ 3</td></tr>
+                <tr data-page-node-id="8xwmh7kR4GY2TOhPEjgYNC"><td data-page-node-id="NlzymbViNis3XHY62aqdNA"><div class="f-name" data-page-node-id="6Z2xx2FknivQYJ07EySL8R"><span class="f-badge b-md" data-page-node-id="MPOpATew6z0KZWZURPr7SO">M</span>读书 · 认知觉醒.md</div></td><td class="f-meta" data-page-node-id="SgWHILPmUzq5K9bLb2y7Tv">Markdown</td><td class="f-meta" data-page-node-id="hNYtLX4C12IDsl84o3bazv">4 天前</td><td class="f-links" data-page-node-id="jh7tDdh50tvuv7n8XFNik6">◈ 5</td></tr>
+                <tr data-page-node-id="OQRuV6aLb8mOESpPE0Vbx5"><td data-page-node-id="ch15BmoPZq3zApZDuimuXH"><div class="f-name" data-page-node-id="v7bLduvvEdv6ZfwsTOlxtE"><span class="f-badge b-url" data-page-node-id="lR2zZPSIDcPX9jhDW7lxEv">L</span>Obsidian 图谱设计参考</div></td><td class="f-meta" data-page-node-id="kaeRaIO6Xuea3R1OeRjqtq">网页剪藏</td><td class="f-meta" data-page-node-id="9Fs1wX8bHTMrHjZ7gPlmyA">上周</td><td class="f-links" data-page-node-id="I548BbWMUgZmGym1vQM6qI">◈ 2</td></tr>
+                <tr data-page-node-id="rnO9LC1SSEdZhywKl3pREM"><td data-page-node-id="nQxOsvh5tLHTcYX2dX2DvJ"><div class="f-name" data-page-node-id="GctnUvrUsOXQvwiD6GOb5g"><span class="f-badge b-img" data-page-node-id="5VPd6ClabuxOoegr28o1u7">I</span>白头脑暴照片.png</div></td><td class="f-meta" data-page-node-id="OkvfBorqXJ4EZLVN4TarI6">图片 · 3.1 MB</td><td class="f-meta" data-page-node-id="4fqiAn08UBNuFa5FXXH6hX">上周</td><td class="f-links" data-page-node-id="lvGZW2omY807j8awUiTREm">◈ 1</td></tr>
+              </tbody>
+            </table>
+
+            <div class="graph-view" id="graphView" data-page-node-id="DHHsMSkugzRfu9gusuFo0I">
+              <svg viewBox="0 0 900 560" data-page-node-id="wJHmH3EIX6QkenesGtNvDV">
+                <line class="g-edge hot" id="e1" x1="450" y1="260" x2="300" y2="160" data-page-node-id="oGjnqogfADmVMANkwIjdhU"/>
+                <line class="g-edge hot" id="e2" x1="450" y1="260" x2="610" y2="170" data-page-node-id="uZXfZ7sfCFCcz9iPyStLFt"/>
+                <line class="g-edge hot" id="e3" x1="450" y1="260" x2="330" y2="380" data-page-node-id="LEMBLMTE4DS0UK58nSpS9U"/>
+                <line class="g-edge" id="e4" x1="450" y1="260" x2="590" y2="370" data-page-node-id="VGzdLLYd4wtlSbGyaznoFb"/>
+                <line class="g-edge" id="e5" x1="300" y1="160" x2="200" y2="250" data-page-node-id="pCrfPA2GWSzC1HkGUArhIP"/>
+                <line class="g-edge" id="e6" x1="610" y1="170" x2="710" y2="260" data-page-node-id="VFFs76neuCrANjd00Rcd0o"/>
+                <line class="g-edge" id="e7" x1="330" y1="380" x2="200" y2="420" data-page-node-id="CxehSlBB41QIHQI6eupGHM"/>
+                <line class="g-edge" id="e8" x1="590" y1="370" x2="710" y2="420" data-page-node-id="He5MDazjMpDu8ZG5xKh9Cw"/>
+                <line class="g-edge" id="e9" x1="300" y1="160" x2="180" y2="110" data-page-node-id="b7tcDgOt1hVO8ccqqIndbC"/>
+                <line class="g-edge" id="e10" x1="610" y1="170" x2="740" y2="120" data-page-node-id="pGgzfSd3tKmU0TC36owSVg"/>
+                <circle class="flow" r="3.4" data-page-node-id="gr2tM2igALadIWHZdRaxi6"><animateMotion dur="2.8s" repeatCount="indefinite" data-page-node-id="U8sKvz4aJSkj6iQELniauE"><mpath href="#e1" data-page-node-id="h7coGHshdryiGLH3XtDi1f"/></animateMotion></circle>
+                <circle class="flow" r="3.4" data-page-node-id="t7fK8j88cKWmY9YoN7kdbj"><animateMotion dur="3.4s" repeatCount="indefinite" data-page-node-id="939tHG3tAXPvgiyfLgVZbT"><mpath href="#e2" data-page-node-id="cEq3Lhh0Mo2AfGR4NcAQNT"/></animateMotion></circle>
+                <circle class="flow" r="3.4" data-page-node-id="HOToA5gakmQ9jNO82OqpAV"><animateMotion dur="3.1s" repeatCount="indefinite" data-page-node-id="BqpeuFihoVr80tQFfovvoA"><mpath href="#e3" data-page-node-id="ynpGHQv4VSs67i1XgOrjrQ"/></animateMotion></circle>
+                <circle class="flow-2" r="2.6" data-page-node-id="BZt1buzatbupqwNOLFGmdq"><animateMotion dur="4.2s" repeatCount="indefinite" data-page-node-id="m33wfqLLkeiKiNGapaHmhv"><mpath href="#e5" data-page-node-id="DRCa7JtOs1H43pFRtS27G9"/></animateMotion></circle>
+                <circle class="flow-2" r="2.6" data-page-node-id="GPyzGD93YxCRDNBPftEd4f"><animateMotion dur="4.6s" repeatCount="indefinite" data-page-node-id="MVMMRDQjL2AjCkDPFQKrfk"><mpath href="#e6" data-page-node-id="Pq8OlLXnm0T9jkipA2UpBa"/></animateMotion></circle>
+                <g class="g-node" data-page-node-id="dLaCdo5zQSMBoDDKa5SjIX"><circle cx="450" cy="260" r="15" style="fill:var(--node-1)" data-page-node-id="sYIZ8iqNlzo8kUQQZHd7Rq"/><text class="strong" x="450" y="292" text-anchor="middle" data-page-node-id="uxAFjZZJFZ9qmHBOgZUq9B">增长模型.md</text></g>
+                <g class="g-node" data-page-node-id="2kuXyMVjyRshE4mZoZ0VhX"><circle cx="300" cy="160" r="11" style="fill:var(--node-2)" data-page-node-id="ksFMsq0VxtWjxe4FHqOgQR"/><text x="300" y="140" text-anchor="middle" data-page-node-id="ggYTz5h4BZok6hlGyMnKzN">小红书运营手册</text></g>
+                <g class="g-node" data-page-node-id="Hxmmu0em2mRKGzELsK9mb7"><circle cx="610" cy="170" r="11" style="fill:var(--node-2)" data-page-node-id="RYaQtbHfZ9HZAFYr1JbIZQ"/><text x="610" y="150" text-anchor="middle" data-page-node-id="75J9CAfSYekdV68ipL5PdC">AI 产品观察</text></g>
+                <g class="g-node" data-page-node-id="NoTbg9RvQNIlJE79bXudF9"><circle cx="330" cy="380" r="10" style="fill:var(--node-3)" data-page-node-id="CcXW45NeD8z9NXBiNETw5A"/><text x="330" y="408" text-anchor="middle" data-page-node-id="6TOCCZLqENyI6LrY1tjSRJ">认知觉醒</text></g>
+                <g class="g-node" data-page-node-id="5kOiK01H2AJIXMYGG0ZhI5"><circle cx="590" cy="370" r="9" style="fill:var(--node-3)" data-page-node-id="pAoNNA9GN03EGn7kFbgTAC"/><text x="590" y="396" text-anchor="middle" data-page-node-id="Vmk9AyFZebWe1H5sa1VNrQ">竞品调研.pdf</text></g>
+                <g class="g-node" data-page-node-id="AzEiaKVChW1LqVPAK0h9WC"><circle cx="200" cy="250" r="6" style="fill:var(--node-4)" data-page-node-id="jZfLcBo0v8ZoXRckglI7cs"/><text x="200" y="272" text-anchor="middle" data-page-node-id="CLN9rs3XCOKnOEiNqYInWl">爆款公式</text></g>
+                <g class="g-node" data-page-node-id="bk43CGYwrzEJa3w17nFD4P"><circle cx="710" cy="260" r="6" style="fill:var(--node-4)" data-page-node-id="rErM1kCHm12MKztVyYIr5o"/><text x="710" y="282" text-anchor="middle" data-page-node-id="ju2s09iO1t2zYjoTcsBCyl">Agent 趋势</text></g>
+                <g class="g-node" data-page-node-id="XrtVT6QFPMWY9epgWYAMxz"><circle cx="200" cy="420" r="5" style="fill:var(--node-4)" data-page-node-id="FV28F9ZYd8Ccyxq5zY1oc9"/><text x="200" y="440" text-anchor="middle" data-page-node-id="F4iIM03s0yL1mMHmhddVBV">习惯回路</text></g>
+                <g class="g-node" data-page-node-id="DX3FpbHY6e5VDDcMpME1uD"><circle cx="710" cy="420" r="5" style="fill:var(--node-4)" data-page-node-id="kAQOxvlFSUFyb4waa4DEAM"/><text x="710" y="440" text-anchor="middle" data-page-node-id="SkSb7i2EXeX64BXRNlPIHb">Notion AI</text></g>
+                <g class="g-node" data-page-node-id="myon7pkk6IuTLjeII0v2zQ"><circle cx="180" cy="110" r="5" style="fill:var(--node-4)" data-page-node-id="JwOxyp0pF8iJuHWxEmBRNN"/><text x="180" y="96" text-anchor="middle" data-page-node-id="aRhVunVN0v1zv9Qn1xrNQt">选题库</text></g>
+                <g class="g-node" data-page-node-id="eNdCjKojwKh15jAWqzSAHl"><circle cx="740" cy="120" r="5" style="fill:var(--node-4)" data-page-node-id="yro64eBJrwkXBjZe04is6H"/><text x="740" y="106" text-anchor="middle" data-page-node-id="io7yYJOApQvRYH1adzN8Qt">RAG 笔记</text></g>
+              </svg>
+              <div class="graph-legend" data-page-node-id="kAKfFEsh6UfRLidngDcAxh">
+                <span data-page-node-id="BfqLPngADYYq3BOFlXv1lJ"><i style="background:var(--node-1)" data-page-node-id="Cs4w6T7l7cPsFJb9cvF3CA"></i>当前文件</span>
+                <span data-page-node-id="o4AZtFCmwTHWKm0yVzbMBx"><i style="background:var(--node-2)" data-page-node-id="2U2VsDLdX9xUHTE41ym4vC"></i>直接关联</span>
+                <span data-page-node-id="K6NMF0esRHDP4N4An87eqB"><i style="background:var(--node-3)" data-page-node-id="iygOf2u484Hmq65BXLdC6B"></i>知识点</span>
+                <span data-page-node-id="sispgMIAQeffkLsO5ipP7X"><i style="background:var(--node-4)" data-page-node-id="rWoaD8Gd93VB08vEt4snvV"></i>次级关联</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="files-statusbar" data-page-node-id="3Em8bBZuLlLLnBfLyzF2ZJ">
+            <span data-page-node-id="msHDGTiPDe8Ie56lg0lnFP">共 128 个文件</span><span data-page-node-id="yDJ8YelCG5NazIeDFlHMgB">342 条关联</span><span data-page-node-id="KQXSOuKFgjGdoFUcQkVFIo">2.4 GB / 10 GB</span>
+            <span style="margin-left:auto" data-page-node-id="W44NzuY9yMJMcT1h88dL1T">流光的边 = 近期活跃关联</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 进化图谱 ---------- -->
+    <section class="page" id="page-graph" data-page-node-id="6vzi4REuZ9FJTXOp8BaDCy">
+      <div class="p-head" data-page-node-id="IY01X0UyS7caRVzhxnbYCy">
+        <span class="p-title" data-page-node-id="j2djNd8VSTSjla9uJGBhgh">进化图谱</span>
+        <span class="p-desc" data-page-node-id="LZpyWlZDJqQOGkJwhNuF8P">信息如何被理解、连接、沉淀成知识</span>
+      </div>
+      <div class="p-body" data-page-node-id="XJYmnM3AO9xC02QfmHCOFs">
+        <div class="p-scroll" data-page-node-id="k3sBgCLYzXE1A66GijHdEp">
+          <div class="mod-strip stagger" data-page-node-id="iqD4OdxGfy3FG4bOOglfDY">
+            <div class="evo-mod on" data-page-node-id="yVov77OuGkZuX3vxK4BCrr">
+              <div class="evo-mod-head" data-page-node-id="eUIC2u7BvR9RgbTHqTsavT"><span class="m-name" data-page-node-id="RVoQYMapc0E04l6fnOPzVB">收集器</span><span class="m-en" data-page-node-id="b38tUDBX2zDEktM6VOOb1q">Collector</span><div class="switch" data-page-node-id="LoGNMZ6DVdF31JXr2AmXmN"></div></div>
+              <p data-page-node-id="3VfO0S5WMlKLy9dopBuyHH">文件、网页、想法的统一入口，先存后理。</p>
+            </div>
+            <div class="evo-mod on" data-page-node-id="0gy4ynlCIhSSiUkofXORCj">
+              <div class="evo-mod-head" data-page-node-id="sYlSPJMOZEmmvo7ZBSHjEU"><span class="m-name" data-page-node-id="cHR3bXryjxtEWiZe6cXQow">解析器</span><span class="m-en" data-page-node-id="LL3euPFYTo0qrcRziJu7Gm">Parser</span><div class="switch" data-page-node-id="bmnExgTu6ByUVidkACPNsJ"></div></div>
+              <p data-page-node-id="pCDCsoz7D7leAPTyTviVh2">AI 读取内容，抽取主题、实体与意图。</p>
+            </div>
+            <div class="evo-mod on" data-page-node-id="PLVCHJ0VgyO448GhpbwIwh">
+              <div class="evo-mod-head" data-page-node-id="15ubfPnGLZmK0JUAlOf8eJ"><span class="m-name" data-page-node-id="8WYyPC3iaFipL8uqMqUVvY">关联器</span><span class="m-en" data-page-node-id="CRhOQGwROIuerusdyLaLL4">Linker</span><div class="switch" data-page-node-id="baJgGKAizT1a9QYhnU4CZP"></div></div>
+              <p data-page-node-id="GvCBDsrkhcDW4opF4VUWK3">把新信息与已有文件、知识点建立连接。</p>
+            </div>
+            <div class="evo-mod" data-page-node-id="7RF7aEJxJu22uoLypaV1lF">
+              <div class="evo-mod-head" data-page-node-id="leOWZcwjvteqnL831GqbD7"><span class="m-name" data-page-node-id="HLDPMbCabxgCltGsCIJ3Tu">沉淀器</span><span class="m-en" data-page-node-id="FwhltvQtHY9U3Vqu70S6MZ">Distiller</span><div class="switch" data-page-node-id="HIP3GTHJoHDtXHVtKqg5eD"></div></div>
+              <p data-page-node-id="ZKNTyk00oy2KsChnM6bmCr">把对话与文件蒸馏为可复用的知识点。</p>
+            </div>
+          </div>
+
+          <div class="beam-panel" data-page-node-id="SFF0S4XNecBj0AQWOCSB3L">
+            <div class="beam-head" data-page-node-id="J243027NZ35yJFig7SMZf4">
+              <span class="beam-title" data-page-node-id="EAICpiqKqE3WkXQnI9cTP7">实时演化流</span>
+              <span class="beam-sub" data-page-node-id="IDiQQ1AhT2QAAEwcHDJyXm">光点沿关联路径流动 · 一处光点 = 一次信息传递</span>
+            </div>
+            <svg class="beam-svg" viewBox="0 0 680 168" data-page-node-id="kG6IpGizkddAK2wZtfgnMA">
+              <defs data-page-node-id="kDR6hYoAdNCnnfFit64oOX">
+                <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="0" data-page-node-id="1sNoEIREDCV47V0bRyLbZO"><stop class="sp1" offset="0%" data-page-node-id="inctedoAxzhou8b1QfLiHo"/><stop class="sp2" offset="100%" data-page-node-id="ArLBEemxW8yqtrKqMshouR"/></linearGradient>
+                <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="0" data-page-node-id="ntb65AtD9sq8EzaTjvI8sJ"><stop class="sp3" offset="0%" data-page-node-id="4JGdfPsLaT9u9nWfRYDiqN"/><stop class="sp4" offset="100%" data-page-node-id="Fbmg489eXjqcXXoSHhoBoo"/></linearGradient>
+              </defs>
+              <path id="p1" d="M150 112 C 250 40, 330 40, 430 112" fill="none" stroke="url(#bg1)" stroke-width="1.5" data-page-node-id="XQqc5RghCb9RlprAOrY9mB"/>
+              <path id="p2" d="M300 112 C 380 50, 450 50, 530 112" fill="none" stroke="url(#bg2)" stroke-width="1.5" data-page-node-id="BiVH8thG0DsPVcM1g6wz4I"/>
+              <circle class="flow" r="4.5" data-page-node-id="M06GbxUhfTvb90WG61Dg3k">
+                <animateMotion dur="2.6s" repeatCount="indefinite" data-page-node-id="VS8YMpGOEe8agnuiMRFEQS"><mpath href="#p1" data-page-node-id="inOPvT6q01Ln4Tq7PK0qZX"/></animateMotion>
+                <animate attributeName="opacity" values="0;1;1;0" dur="2.6s" repeatCount="indefinite" data-page-node-id="s7nUHnxjWiE4vuiGGwTFsP"/>
+              </circle>
+              <circle class="flow" r="4.5" data-page-node-id="3ENECMCPG7CgFrz3l2qwOc">
+                <animateMotion dur="3.2s" begin="0.6s" repeatCount="indefinite" data-page-node-id="GRfOij5UnXYmSBhpUB2nIX"><mpath href="#p2" data-page-node-id="OgOKlwewjkkCPb0CEZ86Ea"/></animateMotion>
+                <animate attributeName="opacity" values="0;1;1;0" dur="3.2s" begin="0.6s" repeatCount="indefinite" data-page-node-id="nGr1O98QMCGSzgNRUHILry"/>
+              </circle>
+              <g class="beam-node bn bn1" data-page-node-id="RnViI6J1rXfAFIoXPixegd">
+                <rect x="96" y="100" width="108" height="34" rx="9" stroke-width="1" data-page-node-id="RBwkjWGR5T72Lwh0LggHc0"/>
+                <text x="150" y="117" text-anchor="middle" dominant-baseline="central" font-size="12.5" font-weight="500" data-page-node-id="ALQWPE8eP2Z2is0nU1Sk7G">对话 · 12 条</text>
+              </g>
+              <g class="beam-node bn bn2" data-page-node-id="HLeTcPsNGSZ429qPGD3DQH">
+                <rect x="246" y="100" width="108" height="34" rx="9" stroke-width="1" data-page-node-id="H4Cz7XPRnbL0ViY7zHJxGX"/>
+                <text x="300" y="117" text-anchor="middle" dominant-baseline="central" font-size="12.5" font-weight="500" data-page-node-id="zvPlXZPykawbrHSGcVMepG">文件 · 3 个</text>
+              </g>
+              <g class="beam-node bn bn3" data-page-node-id="Bl1MsZz1AxfUJIw4SmA61d">
+                <rect x="476" y="100" width="122" height="34" rx="9" stroke-width="1" data-page-node-id="HLjkaI7bvrcxyFdYf3HeCS"/>
+                <text x="537" y="117" text-anchor="middle" dominant-baseline="central" font-size="12.5" font-weight="500" data-page-node-id="bLr5qtH0taqJrDepxljXqX">知识点 · 1 个</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="evo-day" data-page-node-id="oTe7PAUslFZE0wq02TCYG0">今天 · 3 次演化</div>
+          <div class="stagger" data-page-node-id="EKa8EXVItZv6YHlXQDRBKE">
+            <div class="evo-card" data-page-node-id="dmkrFFTsyUbi2WrTBmEP7a">
+              <div class="evo-card-title" data-page-node-id="LM4DBuDemEgUvVsxrGE4hi">从一次聊天，长出一个知识点</div>
+              <div class="evo-chain" data-page-node-id="ZWUlKfEvFC7xkjLAqQqMPr">
+                <span class="chain-node c-chat" data-page-node-id="wtCorcOSkFYzcPZ5iJrvN5">对话 · 爆款内容套路（12 条）</span><span class="chain-sep" data-page-node-id="tN4rDDj3PGjBcZYAIwdoPa">→</span>
+                <span class="chain-node c-file" data-page-node-id="p1MmmZ8Z6L4DORd28YXamL">关联 · 小红书运营手册.md</span><span class="chain-sep" data-page-node-id="KeJ8wOdAFGhThxei6m0qWF">→</span>
+                <span class="chain-node c-know" data-page-node-id="hdXUmAhLaPBoDTOnaYl01t">沉淀 · 低粉爆款三要素</span>
+              </div>
+              <div class="evo-card-meta" data-page-node-id="VFMn7VFyJT6pS2Iq7JsV0D">14:32 · 关联器自动触发 · 置信度 92%</div>
+            </div>
+            <div class="evo-card" data-page-node-id="IzNc8dSe2Vi6ug5Dyl0Smd">
+              <div class="evo-card-title" data-page-node-id="djoT7fQvghShWo5jsEB9TL">新文件被并入已有知识网络</div>
+              <div class="evo-chain" data-page-node-id="tEAoYUfqWW1tGMlTkagx0C">
+                <span class="chain-node c-chat" data-page-node-id="b5mmWQqHgU8bNaRWh7fp9l">文件 · 竞品调研.pdf</span><span class="chain-sep" data-page-node-id="SSJPWQLGtkkFibhoQntyaD">→</span>
+                <span class="chain-node c-file" data-page-node-id="e2VCqBehGwvzCAcamGrYEK">关联 · AI 产品观察.md</span><span class="chain-sep" data-page-node-id="YswoWTCnhoyfni5HFBcoda">→</span>
+                <span class="chain-node c-know" data-page-node-id="s6jQFOfdH8jyfAAut6rY1N">更新 · AI 笔记竞品对比</span>
+              </div>
+              <div class="evo-card-meta" data-page-node-id="zzlcb1XHdwG0CCt94T5Cmk">11:07 · 解析器 + 关联器 · 新增 3 条边</div>
+            </div>
+          </div>
+
+          <div class="evo-day" data-page-node-id="4ldg8GqTGORwzUkRmYC5bp">昨天 · 5 次演化</div>
+          <div class="stagger" data-page-node-id="FYxhG0uUaRuQFMcsAwFz9C">
+            <div class="evo-card attn" data-page-node-id="nT0UmovymypnPDg8wCcTnV">
+              <div class="evo-card-title" data-page-node-id="T070PjADJaRLBwt4bQsccy">高频主题聚合成簇 · 待你确认</div>
+              <div class="evo-chain" data-page-node-id="CkuTAp1lTN4iBccdEAOQtX">
+                <span class="chain-node c-chat" data-page-node-id="AIPSdD25R5nZYHOZtHMsqA">7 次对话提及「增长」</span><span class="chain-sep" data-page-node-id="85MGBTrqMkzrTw5rhxcdqd">→</span>
+                <span class="chain-node c-file" data-page-node-id="2CsNHcPExe9ZkNOXyUKK9G">聚合 · 增长模型.md</span><span class="chain-sep" data-page-node-id="dVwuaucXG6fG0PYWizYUVb">→</span>
+                <span class="chain-node c-know" data-page-node-id="zBwmfbsX41HTlBqrKgRtDv">建议 · 建立「增长」主题簇</span>
+              </div>
+              <div class="evo-card-meta" data-page-node-id="so0FfgCm3T6SBkwIedCHZh">21:40 · 沉淀器周度任务 · 等待你确认</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 知识总结 ---------- -->
+    <section class="page" id="page-summary" data-page-node-id="c0Jn9vazWWTzJPeMtqqvRT">
+      <div class="p-head" data-page-node-id="HJUIm8DBOqjkX116A30iB2">
+        <span class="p-title" data-page-node-id="q9JOfJ9vDuoTEVypImWJkc">知识总结</span>
+        <span class="p-desc" data-page-node-id="TlO25WXxX8GtEND53cBxmi">你和 AI 一起积累的一切，都在这里被看见</span>
+      </div>
+      <div class="p-body" data-page-node-id="3nOtA5Q67uH56oZYHiD2xF">
+        <div class="p-scroll" data-page-node-id="OtNzuoVkg2oQxwM5dXWnfd">
+          <div class="stat-strip stagger" data-page-node-id="dlss1ARsBiP8y39cTesOxB">
+            <div class="stat-card" data-page-node-id="7WBe7fkTJsbPEhEp4osyTF">
+              <div class="stat-label" data-page-node-id="YVkiHouiSInhKbt0HAfjN7">相识天数</div>
+              <div class="stat-value" data-page-node-id="hcpPyHiZm1V9K7UtYSXgAl"><span data-tick="47" data-page-node-id="fGP9NwqWkSTsNhnpPUXoef">0</span><small data-page-node-id="Ir4Ly89HUCGDV7ufhYRAmt">天</small></div>
+              <div class="stat-sub" data-page-node-id="PMOD8gYj0J3T7H9JdRHNPh">自 8 月 6 日起</div>
+            </div>
+            <div class="stat-card" data-page-node-id="VmGzhSGfnBBhfmjSFIxLLQ">
+              <div class="stat-label" data-page-node-id="5tyzgGEwyw68X3b5vabE4h">互动热度 · 近 14 天</div>
+              <div class="heat-row" id="heatRow" data-page-node-id="r0kT6PUJq0cHogUMrUtaCq">
+                <i class="l1" data-h=".34" data-page-node-id="huIxpYQM65JRbRFGVRCAi2"></i><i class="l2" data-h=".56" data-page-node-id="KM5Kblj4Tjg9spjp2b6Jgq"></i><i class="l1" data-h=".3" data-page-node-id="DBmtYLJtfOefzhmhvJUk9z"></i><i class="l3" data-h=".78" data-page-node-id="3OlpbObMovzGR7vVhpIv7R"></i>
+                <i class="l2" data-h=".6" data-page-node-id="nvUXAhZX3fPswEdEu3XMlK"></i><i class="l4" data-h="1" data-page-node-id="r8QSeVSCBoHP3XnLHEvKdB"></i><i class="l3" data-h=".82" data-page-node-id="nNZ3bnZLSRAROsm3e0Gjxr"></i><i class="l2" data-h=".5" data-page-node-id="0SpIsp1S4o5XXjXxJGLv7m"></i>
+                <i class="l3" data-h=".74" data-page-node-id="Lp9eH9ultfNEs0mXir1Gkk"></i><i class="hot" data-h=".95" data-page-node-id="IJE5yVkAwzR2DQrSl93IUe"></i><i class="l3" data-h=".7" data-page-node-id="NaZ6KpgH6gYUKX4FiTGup1"></i><i class="hot" data-h="1" data-page-node-id="z8lYPtMLSm9OTf276cnzW2"></i>
+                <i class="l2" data-h=".52" data-page-node-id="5KZrmOGO2Ih6aCNkFuKPt7"></i><i class="hot" data-h=".88" data-page-node-id="CC3xe2UHHEM9KqgaK5kk4Z"></i>
+              </div>
+              <div class="stat-sub" style="margin-top:8px" data-page-node-id="TCrCFxl4bA40x38aNTGTpn">今日已互动 <span data-tick="23" data-page-node-id="XO4rBHTkGI6Cfdq0tuaZHI">0</span> 次</div>
+            </div>
+            <div class="stat-card" data-page-node-id="I47FH3CcydwESCFvkDQTtO">
+              <div class="stat-label" data-page-node-id="NcW0AV192Axd0AUcnuaNoW">知识资产</div>
+              <div class="stat-value" data-page-node-id="sxptwARKPIVRkzMEnHd5dk"><span data-tick="128" data-page-node-id="Ilu9BWtHVVfjTx0C4du0zw">0</span><small data-page-node-id="rGxeElvps4BJvNFNXphGpM">文件</small></div>
+              <div class="stat-sub" data-page-node-id="1UK8yqEDzCSOxDuqjHV6Aa"><span data-tick="342" data-page-node-id="JAAEHAAy7USyDG4la7yANt">0</span> 条关联 · <span data-tick="56" data-page-node-id="WIRA9kBKXIO3t9xfTyBZAW">0</span> 个知识点</div>
+            </div>
+            <div class="stat-card" data-page-node-id="l0IWMqOSCksvaPeNFFM9Cx">
+              <div class="stat-label" data-page-node-id="BJuSf6AZFk3sVb99ITSjqX">存储空间</div>
+              <div class="stat-value" data-page-node-id="tHO1dGDoto0avJGDJL6NiH"><span data-tick="2.4" data-dec="1" data-page-node-id="Z4VK2ze8xuGOwznE9lhIPu">0</span><small data-page-node-id="OZXUr2Ijyv8aF0UT6VCAqN">/ 10 GB</small></div>
+              <div class="stat-bar" data-page-node-id="pbDnUtOaBEFxnC1J0rlW37"><i data-fill="24" data-page-node-id="zBCTPhaQTuciuIJCnVeVRv"></i></div>
+            </div>
+          </div>
+
+          <div class="summary-grid stagger" data-page-node-id="qruMGBd6ZjQAcOv1RgzXgh">
+            <div class="panel" data-page-node-id="AnaPOPGj1JQFZzEC2FUlpl">
+              <div class="panel-head" data-page-node-id="xP1hCr1N9C6AK0D0Kj5m8g">
+                <span class="panel-title" data-page-node-id="RwsPnsE9dCwqP4mZTfx6zq">高频触发知识</span>
+                <span class="panel-sub" data-page-node-id="2REDD72Hjw5hk7OfAf0GsG">最常被调用 TOP 6</span>
+              </div>
+              <div class="rank-list" data-page-node-id="AOU6wQNNsyYOm9Lv9Yc82W">
+                <div class="rank-row" data-page-node-id="T6xWFhA3QjoP909wMOxdqc"><span class="rank-no" data-page-node-id="rHEqcnvgaHSsDSAUceXLHI">01</span><div class="rank-body" data-page-node-id="r7SwsasTMQdYrCSZqGfGSC"><div class="rank-name" data-page-node-id="K83CY1eIwKRPiR7LZqBCnN">低粉爆款三要素</div><div class="rank-bar" data-page-node-id="7gJGBMMyqn48E8OzxyewQN"><i data-fill="100" data-page-node-id="tKBdAaECQ155bUauNGGMRz"></i></div></div><span class="rank-count" data-page-node-id="FRqfRonfTgp5LKdOEN7tVD">38 次</span></div>
+                <div class="rank-row" data-page-node-id="TCUKJF0jLFoj2pvmHQbjqB"><span class="rank-no" data-page-node-id="hGiz3Vjt1GAJUmHwjqHCVa">02</span><div class="rank-body" data-page-node-id="12SEHp0jEQVkYluGexx2aT"><div class="rank-name" data-page-node-id="v9uU6oN5assl3y8GFnexyp">小红书选题公式</div><div class="rank-bar" data-page-node-id="B9gOsq42XMgCK1Jp9XZMcb"><i data-fill="76" data-page-node-id="ulxT7DBIeOMd0Wj9pJzneF"></i></div></div><span class="rank-count" data-page-node-id="BoMTeaC6a0iigshHCYB3j9">29 次</span></div>
+                <div class="rank-row" data-page-node-id="1um8SCGjwrFt53kb8Lza5N"><span class="rank-no" data-page-node-id="9ngyubJBJi1e4VontARUBY">03</span><div class="rank-body" data-page-node-id="xDZNkxqkKK0RPh0IpuG9DG"><div class="rank-name" data-page-node-id="nR2r8BlWrUhYoUR82c7y37">增长模型 · AARRR</div><div class="rank-bar" data-page-node-id="nai6VXFMhmx1CedAeJuFlv"><i data-fill="63" data-page-node-id="ivfLVM1rh03dV0jKgZvaHJ"></i></div></div><span class="rank-count" data-page-node-id="b4m4tsM5qstmjpbrnNDQEm">24 次</span></div>
+                <div class="rank-row" data-page-node-id="6vZBIDgQ77evL9wzyHMXAA"><span class="rank-no" data-page-node-id="txiheeEq4WkCIXZZjKxNul">04</span><div class="rank-body" data-page-node-id="qe9Lu81rFIxl5VfsE4K6K7"><div class="rank-name" data-page-node-id="5nhUE2wFLd7D8OtjESYlbW">AI 笔记产品竞品对比</div><div class="rank-bar" data-page-node-id="jkLHGRsNzCil4YoGVFGQXN"><i data-fill="47" data-page-node-id="52UeS5BzL5wFgwk8E1vZJD"></i></div></div><span class="rank-count" data-page-node-id="TbBefxafmNNfcVYw3PNehc">18 次</span></div>
+                <div class="rank-row" data-page-node-id="8nUIZI17inKHN2uTxJ5ibE"><span class="rank-no" data-page-node-id="X1tQnvWyQNEs2ddpGsw5nv">05</span><div class="rank-body" data-page-node-id="m4EPqIVbE2tzlLYEFSdsoY"><div class="rank-name" data-page-node-id="OWZufw6DPpP97ScJ9j177N">习惯回路模型</div><div class="rank-bar" data-page-node-id="jo31zeXv6j4AEdv9JNPHdw"><i data-fill="34" data-page-node-id="s40NCKLJ2ZkAqqWKqN2ASR"></i></div></div><span class="rank-count" data-page-node-id="zB26XoYX5ZvSFNwisu9DcT">13 次</span></div>
+                <div class="rank-row" data-page-node-id="KEWuxs8E3nuHFkWO3Zf3Tz"><span class="rank-no" data-page-node-id="UzFC6stsUanhVi9iKU2JAw">06</span><div class="rank-body" data-page-node-id="l4HFuEyFaHJocRiuxoKXG0"><div class="rank-name" data-page-node-id="cLFhYZJq0hIPmoYFGgQL2J">封面图设计 checklist</div><div class="rank-bar" data-page-node-id="KGmlMPwuvQtlHAnVIkpHac"><i data-fill="26" data-page-node-id="cMljeMBdxR0kxd0PEIpfNn"></i></div></div><span class="rank-count" data-page-node-id="XrysDCbtJ3VZH08Ty5YaaY">10 次</span></div>
+              </div>
+            </div>
+
+            <div class="panel" data-page-node-id="kAaFOYqymWKunAEKCHYzwa">
+              <div class="panel-head" data-page-node-id="eZ4bDrAGwmno6nlIAImz8r">
+                <span class="panel-title" data-page-node-id="tZyf7N14x5m1NU1hQS6KAF">AI 自动总结</span>
+                <div class="sum-tabs" id="sumTabs" data-page-node-id="rClKYRHEfe5HjNIxdmaBbr">
+                  <button class="active" data-page-node-id="in3jHwLx85dk12l4fAijsK">日</button><button data-page-node-id="lq9XcZErgIDEDQEcZhPYB9">周</button><button data-page-node-id="Afkf4GPNi7zSapkxRcfrKo">月</button><button data-page-node-id="5qZiG4RdVQjVvTEcIYBBeS">年</button>
+                </div>
+              </div>
+              <div class="sum-list" data-page-node-id="gZqZkoCIXvktmd9wF30wMs">
+                <div class="sum-item" data-page-node-id="JwaiPQseuCunybPXT774j6">
+                  <div class="sum-item-head" data-page-node-id="AlISUASLoW4JdANoElfQU3"><span class="sum-date" data-page-node-id="Zbo8F62NabwyYFQ1Bc6T8a">09-22 今日</span><span class="sum-title" data-page-node-id="GLqGmf7sNDvnEp6WcCSCjS">围绕「增长」的一天</span></div>
+                  <p class="sum-text" data-page-node-id="wvCG4rAGGggsMm48bMenbQ">今天 23 次互动中，14 次与增长模型相关。你将《竞品调研.pdf》并入知识网络，新增 3 条关联。</p>
+                  <div class="sum-tags" data-page-node-id="Y1FsSam96eK7T5z8yCCPVt"><span class="chip" data-page-node-id="yOeOQc5METXHXOtVoJRC1n">增长</span><span class="chip" data-page-node-id="yqchzFHEzEo26c04vYdD0a">竞品</span><span class="chip todo" data-page-node-id="xdyq37fsopaDNmfnY8E1mE">待确认 1 项</span></div>
+                </div>
+                <div class="sum-item" data-page-node-id="Gb4IsG6lICxV3hxhomoams">
+                  <div class="sum-item-head" data-page-node-id="LtFhazJIgm7s0bEVreVDQH"><span class="sum-date" data-page-node-id="4FHKl0igjWgUxRNGYAqqxK">09-21</span><span class="sum-title" data-page-node-id="4ikL4FmCgF4X2ym170zpie">小红书运营知识持续加密</span></div>
+                  <p class="sum-text" data-page-node-id="FHlOvSHAUZTH5zzpi3dBNt">「低粉爆款三要素」被调用 6 次，成为本周最高频知识点，与「选题公式」之间出现新的潜在关联。</p>
+                  <div class="sum-tags" data-page-node-id="jnWHmQJwMLG4gqxOadEKTB"><span class="chip" data-page-node-id="AVxUEV4jinW3wgqCiwxkBa">小红书</span><span class="chip" data-page-node-id="OLb0EuPPBdvvSrCYVCzxeT">爆款</span></div>
+                </div>
+                <div class="sum-item" data-page-node-id="BUZCue7HEHiC4FjCna6hAF">
+                  <div class="sum-item-head" data-page-node-id="db9JQ9JnQ3hVmFyDxMAHzg"><span class="sum-date" data-page-node-id="GIOdx6pGIQYXCKFMFDW9vC">09-20</span><span class="sum-title" data-page-node-id="YRw4fv9Xf4j9w1cK4Npjo9">碎片灵感开始聚拢</span></div>
+                  <p class="sum-text" data-page-node-id="VoLABrYcZjwKOIDa28IjxD">过去三天随手记录的 9 条灵感中，5 条指向「AI 工具设计」方向，已自动归拢为候选主题。</p>
+                  <div class="sum-tags" data-page-node-id="Z5edBWZO35EGVee6WAfiSj"><span class="chip" data-page-node-id="hifb5S9inR8a9AYCbnuabL">灵感</span><span class="chip" data-page-node-id="uEtEOYH74xLbvDtDlsExHs">AI 工具</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 设置 ---------- -->
+    <section class="page" id="page-settings" data-page-node-id="7KprXM5Pf4s4lmmClAIDNF">
+      <div class="p-head" data-page-node-id="Dy7wLqSjrjODIuAmx9FmlP">
+        <span class="p-title" data-page-node-id="dpb4A27psgjmMoEzIQOvPv">设置 & 我的</span>
+        <span class="p-desc" data-page-node-id="0jlxojIceSr2umigv4CbBg">账户、外观与系统偏好</span>
+      </div>
+      <div class="p-body" data-page-node-id="dSZ0fFxr9XceDC5bViYMkM">
+        <aside class="settings-nav" data-page-node-id="Q0EcMFVr77Z0c9A3DbJgmU">
+          <button class="s-nav-item active" data-page-node-id="v3uFiCf1JtQHrL39SMCSpm">个人资料</button>
+          <button class="s-nav-item" data-page-node-id="dcwMBffOmsywL3jCTKcTg7">外观主题</button>
+          <button class="s-nav-item" data-page-node-id="jRtbOFL3hEs3lVvq5C46gs">AI 模型</button>
+          <button class="s-nav-item" data-page-node-id="spshbcJy6EhPZ2bYJjkn1l">存储与同步</button>
+          <div class="s-nav-sep" data-page-node-id="w32gN3EoyrcnB69KdUrAgd"></div>
+          <button class="s-nav-item" data-page-node-id="EbAsy2wzO1tyMv0icCnMCg">快捷键</button>
+          <button class="s-nav-item" data-page-node-id="xjHhQsCfGqdC0MWJzd1YCy">通知</button>
+          <button class="s-nav-item" data-page-node-id="ivfCbhInqOgFVf8YnFlX0a">关于</button>
+        </aside>
+
+        <div class="settings-detail" data-page-node-id="M5j4w5k7BKE9WAXCk5hy5l">
+          <h2 data-page-node-id="uhsBgGyCv50enaAbwDo16B">个人资料</h2>
+          <p class="s-desc" data-page-node-id="yHvJBUHFkUPMl7sm8sBt0J">其他设置模块将在功能敲定后逐个补全</p>
+
+          <div class="s-section" data-page-node-id="3ajHYrTyBuCqYsweKtlagX">
+            <div class="profile-card beam-card" data-page-node-id="ERuTf4Z3ioyfqnOux88mK7">
+              <div class="avatar" data-page-node-id="gTOB7cu6dd9u6X5k8qcsl9">暖</div>
+              <div data-page-node-id="T9yx5kQawVcGLtGHbm8VTc">
+                <div class="profile-name" data-page-node-id="nWGn0hMd3KSJjaD0H4rZKF">暖暖</div>
+                <div class="profile-meta" data-page-node-id="65AabnwV1GiWsJPRFtVsMo">加入 47 天 · 128 文件 · 56 知识点</div>
+              </div>
+              <button class="ghost-btn" style="margin-left:auto" data-page-node-id="yivGwQPe25M4Z10TZ4wnwI">更换头像</button>
+            </div>
+          </div>
+
+          <div class="s-section" data-page-node-id="XEEQYCm4jiMmDekWe7MsVX">
+            <div class="s-section-title" data-page-node-id="L6hqetyAtbzfZr5DVqBWU7">主体色 · 仅三色</div>
+            <div class="swatch-row" data-page-node-id="eNvcl9gxz7TWcEADZHhD2Z">
+              <div class="swatch" data-page-node-id="10p8jWSZXTLFIqJje80ZJ0">
+                <div class="sw-bar" style="background:var(--ink)" data-page-node-id="KooR79jHsDGHBaKl8EMB3V"></div>
+                <div class="sw-meta" data-page-node-id="yqqPcQG7uBplBK9HkVxIVS"><b data-page-node-id="0743ji1HUFpsRrGOFE1cmp">墨 Ink</b><code data-page-node-id="xFuzgBpNZ8KUnUDP0vzpFW">结构与文字</code></div>
+              </div>
+              <div class="swatch" data-page-node-id="Cvz76lReiiqlzhcQccvPnM">
+                <div class="sw-bar" style="background:var(--brand)" data-page-node-id="A9dAYbvZJucQE11xEP2ayd"></div>
+                <div class="sw-meta" data-page-node-id="CenONaVtTscB6DgtCZ6FMv"><b id="brandSwName" data-page-node-id="6dRkxw9X20HZGr9wf7N9th">靛 Indigo</b><code id="brandSwHex" data-page-node-id="MiZsKq2jYevx0SGCg82DG0">#3B4CC0</code></div>
+              </div>
+              <div class="swatch" data-page-node-id="zIPLaoTJmkBKCOisbsYacJ">
+                <div class="sw-bar" style="background:var(--accent)" data-page-node-id="tPqVEME2c3ADNe9ka4NrUF"></div>
+                <div class="sw-meta" data-page-node-id="aarnIaEqf8hyZMjI5xhvXb"><b data-page-node-id="MSnfRQDvJGA3SW6Yzndgpi">陶 Terracotta</b><code data-page-node-id="GHDM7Wx2FMqofMh42drjst">需要注意的</code></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="s-section" data-page-node-id="IGCDhqM6sBHR3gv9dccm2R">
+            <div class="s-section-title" data-page-node-id="JOmjJPKV8dTkXUts7ydwwD">基本信息</div>
+            <div class="form-row" data-page-node-id="JFrY43xVa8z68AMozzqCCJ"><label data-page-node-id="aLFPcPuPkZr12mCx8OUVA1">昵称</label><input value="暖暖" data-page-node-id="GD1m4tUnYHLxBaiktxfSQB"></div>
+            <div class="form-row" data-page-node-id="PkGzrV8vvbxYdhycp11Gth"><label data-page-node-id="PWWpbHEaDchmrw5h4Nq2H3">邮箱</label><input value="nuan@example.com" data-page-node-id="en70B4OzPQKm3ClwGBcF4Y"></div>
+            <button class="primary-btn" data-page-node-id="f7QWYgSpW8Nx3jbtE2eefC">保存修改</button>
+          </div>
+
+          <div class="s-section" data-page-node-id="qE8ElXL8wf7xR1mB8b78H8">
+            <div class="s-section-title" data-page-node-id="jrTAqtcl8mWC6K3nHyOUQZ">待设计模块</div>
+            <div class="s-placeholder" data-page-node-id="tIHVZglBVsVv3b0dmrBi20">
+              <b data-page-node-id="b76J1mDFy8Roi5ul9qlEdL">AI 模型 · 存储同步 · 快捷键 · 通知</b>
+              框架已预留，等布局确认后逐个填充具体功能项
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===================== AI 悬浮球（全局常驻） ===================== -->
+<button class="ai-fab" id="aiFab" aria-label="打开 AI 助手" aria-expanded="false" aria-haspopup="dialog" data-page-node-id="XgXWFQAOGVzjkyNzG8gF5W">
+  <span class="fab-orb" data-page-node-id="JmFyGJv6786bZnqZKCQkhl"></span>
+  <span class="fab-badge" id="fabBadge" data-page-node-id="RoF4NVcNL271Mk2dBcvHjh">1</span>
+</button>
+<div class="fab-hint" id="fabHint" data-page-node-id="ATH2HKLAz4HJOOf0VMpTOw">点我 · 我会读懂你当前这一页</div>
+
+<!-- ===================== AI 聊天小窗 ===================== -->
+<aside class="ai-pop" id="aiPop" role="dialog" aria-label="AI 助手" aria-hidden="true" data-page-node-id="a3AtUlJTVhJmmsSgpuWpgI">
+  <div class="ai-pop-head" data-page-node-id="KrJYKp0azTLIRPAKadjiVH">
+    <span class="life-orb sm" data-page-node-id="Z1BzvYtA0Z1yg8y1mecjKv"></span>
+    <div class="ai-pop-title" data-page-node-id="CUXl5K2hUbdgKzDbSHJs6E">
+      <b data-page-node-id="qxIZtPkeu26UeuFHJVgIIw">AI 助手</b>
+      <span data-page-node-id="05m7KOw0zRExvpnH5aOaHw">已读取当前页面：<em id="aiCtxName" data-page-node-id="T9a7UPNsA17itcMsV5mjSd">聊天</em></span>
+    </div>
+    <button class="ai-pop-close" id="aiPopClose" aria-label="关闭" data-page-node-id="GovZDYOOzTCLkFdppX2YGS">✕</button>
+  </div>
+  <div class="ai-quick" data-page-node-id="CLzPHQoKQHq0wg857GB2I1">
+    <button data-ask="总结这一页的内容" data-page-node-id="Fxp9MJmh8Rd66NbvJpVo2Y">总结本页</button>
+    <button data-ask="找出与当前内容相关的文件" data-page-node-id="X6zTdVmLMg5BGdyAgNJOpI">找关联</button>
+    <button data-ask="把刚才的讨论沉淀成知识点" data-page-node-id="zLWHTj8Q1288QceQApbydG">生成知识点</button>
+    <button data-ask="导出这一页的要点" data-page-node-id="4pItd0fgADAcYvqgqYENOG">导出要点</button>
+  </div>
+  <div class="ai-pop-msgs" id="aiPopMsgs" data-page-node-id="zw8uqKbvXLRFjzGG6CCDSw">
+    <div class="msg ai" data-page-node-id="UptACW6Tl6rCrTNmWY0c4c"><div class="m-avatar" data-page-node-id="ilDZvXeHX9VKMisCOwZHtU">AI</div><div class="m-bubble" data-page-node-id="nJIE4Xkk4BGpnxwYm739GK">我在看着你当前的页面。需要我总结、找关联，还是继续聊？</div></div>
+  </div>
+  <div class="ai-pop-input" data-page-node-id="31pFxXMuMN9O7mwnxjiuc7">
+    <input id="aiPopInput" placeholder="基于当前页面提问…" data-page-node-id="WpoqUc0fRjS8pNMZsfAxwB">
+    <button class="send-btn" id="aiPopSend" aria-label="发送" data-page-node-id="cgI42kixJgMZm0oLFPPqI9"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="WC1FICoSiUcKucD9Oo5o1z"><path d="M12 19V5M5 12l7-7 7 7" data-page-node-id="UExbYMOTeLzkadAKMDCoX1"/></svg></button>
+  </div>
+</aside>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+/* ============================================================
+   1 · 主题：白天 / 黑夜
+   ============================================================ */
+const root = document.documentElement;
+const themeLabel = $('#themeLabel');
+function syncThemeLabel() {
+  themeLabel.textContent = root.dataset.theme === 'dark' ? '切换白天' : '切换黑夜';
+}
+syncThemeLabel();
+$('#themeToggle').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('ks-theme', root.dataset.theme);
+  syncThemeLabel();
+  syncBrandUI();
+});
+
+/* ============================================================
+   1.1 · 主体色候选切换（原型控件，供评审对比后定案）
+   ============================================================ */
+const BRANDS = {
+  indigo: { name: '靛 Indigo', light: '#3B4CC0', dark: '#929DF5' },
+  steel:  { name: '钢 Steel',  light: '#1E6B93', dark: '#63B8DC' },
+  claret: { name: '绛 Claret', light: '#9C3B52', dark: '#E48A9E' },
+};
+const brandSwName = $('#brandSwName'), brandSwHex = $('#brandSwHex');
+function syncBrandUI() {
+  const key = root.dataset.brand || 'indigo';
+  $$('#brandDots .bdot').forEach(b => b.classList.toggle('active', b.dataset.brand === key));
+  brandSwName.textContent = BRANDS[key].name;
+  brandSwHex.textContent = BRANDS[key][root.dataset.theme === 'dark' ? 'dark' : 'light'];
+}
+function setBrand(key) {
+  root.dataset.brand = key;
+  localStorage.setItem('ks-brand', key);
+  syncBrandUI();
+}
+$$('#brandDots .bdot').forEach(b => b.addEventListener('click', () => setBrand(b.dataset.brand)));
+syncBrandUI();
+
+/* ============================================================
+   2 · 标题逐字浮现（克制档保留的唯一文字动效）
+   ============================================================ */
+(function renderGreeting() {
+  const el = $('#greeting');
+  const text = el.dataset.text, em = el.dataset.em;
+  const emStart = text.indexOf(em);
+  el.innerHTML = text.split('').map((ch, i) => {
+    const inEm = emStart >= 0 && i >= emStart && i < emStart + em.length;
+    const safe = ch === ' ' ? '&nbsp;' : ch;
+    return `<span style="animation-delay:${(i * 36) + 110}ms">${inEm ? `<em>${safe}</em>` : safe}</span>`;
+  }).join('');
+})();
+
+/* ============================================================
+   3 · 数字滚动 / 进度条 / 热度柱
+   ============================================================ */
+const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+function runCounters(scope) {
+  $$('[data-tick]', scope).forEach(n => {
+    const target = parseFloat(n.dataset.tick);
+    const dec = parseInt(n.dataset.dec || '0', 10);
+    const dur = 900 + Math.random() * 300;
+    const t0 = performance.now();
+    const step = now => {
+      const p = Math.min((now - t0) / dur, 1);
+      n.textContent = (target * easeOutQuart(p)).toFixed(dec);
+      if (p < 1) requestAnimationFrame(step); else n.textContent = target.toFixed(dec);
+    };
+    requestAnimationFrame(step);
+  });
+  const bars = $$('[data-fill]', scope);
+  const heats = $$('#heatRow i');
+  bars.forEach(el => { el.style.transition = 'none'; el.style.width = '0%'; });
+  heats.forEach(el => { el.style.transition = 'none'; el.style.transform = 'scaleY(.18)'; });
+  requestAnimationFrame(() => {
+    bars.forEach(el => el.style.transition = '');
+    heats.forEach(el => el.style.transition = '');
+    bars.forEach((el, i) => setTimeout(() => el.style.width = el.dataset.fill + '%', 140 + i * 60));
+    heats.forEach((el, i) => setTimeout(() => el.style.transform = 'scaleY(' + el.dataset.h + ')', 80 + i * 45));
+  });
+}
+
+/* ============================================================
+   4 · 页面切换
+   ============================================================ */
+const pages = {
+  chat: $('#page-chat'), files: $('#page-files'), graph: $('#page-graph'),
+  summary: $('#page-summary'), settings: $('#page-settings'),
+};
+const pageNames = { chat: '聊天', files: '文件管理', graph: '进化图谱', summary: '知识总结', settings: '设置 & 我的' };
+const aiCtxName = $('#aiCtxName');
+let currentPage = 'chat';
+
+$$('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const key = item.dataset.page;
+    $$('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    Object.values(pages).forEach(p => p.classList.remove('active'));
+    pages[key].classList.add('active');
+    currentPage = key;
+    aiCtxName.textContent = pageNames[key];
+    if (key === 'summary') runCounters(pages.summary);
+  });
+});
+
+/* ============================================================
+   5 · 聊天
+   ============================================================ */
+const chatInput = $('#chatInput'), chatHero = $('#chatHero'), chatMsgs = $('#chatMsgs');
+function pushMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `<div class="m-avatar">${role === 'user' ? '暖' : 'AI'}</div><div class="m-bubble"></div>`;
+  div.querySelector('.m-bubble').textContent = text;
+  chatMsgs.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+function sendChat(text) {
+  text = (text || chatInput.value).trim();
+  if (!text) return;
+  if (!chatMsgs.classList.contains('show')) { chatHero.style.display = 'none'; chatMsgs.classList.add('show'); }
+  pushMsg('user', text);
+  chatInput.value = '';
+  setTimeout(() => pushMsg('ai', '收到。我会结合知识库里 128 个文件来回答——这是原型占位回复，正式版将展示真实推理与引用来源。'), 560);
+}
+$('#chatSend').addEventListener('click', () => sendChat());
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
+$$('.suggest').forEach(s => s.addEventListener('click', () => sendChat(s.dataset.q)));
+
+/* ============================================================
+   6 · 文件管理：视图 / 筛选 / Spotlight
+   ============================================================ */
+$$('#viewToggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('#viewToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const isGraph = btn.dataset.view === 'graph';
+    $('#listView').style.display = isGraph ? 'none' : '';
+    $('#graphView').classList.toggle('show', isGraph);
+  });
+});
+$$('#filterRow .f-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    $$('#filterRow .f-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+$$('.stat-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+});
+
+/* ============================================================
+   7 · 图谱模块 / 总结 tab / 设置列表
+   ============================================================ */
+$$('.evo-mod').forEach(m => m.addEventListener('click', () => m.classList.toggle('on')));
+$$('#sumTabs button').forEach(btn => btn.addEventListener('click', () => {
+  $$('#sumTabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}));
+$$('.s-nav-item').forEach(btn => btn.addEventListener('click', () => {
+  $$('.s-nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}));
+
+/* ============================================================
+   8 · AI 悬浮球 / 聊天小窗 / 打字机占位
+   ============================================================ */
+const aiFab = $('#aiFab'), aiPop = $('#aiPop');
+function openAI() {
+  aiPop.classList.add('open'); aiFab.classList.add('open');
+  aiPop.setAttribute('aria-hidden', 'false'); aiFab.setAttribute('aria-expanded', 'true');
+  setTimeout(() => $('#aiPopInput').focus(), 180);
+}
+function closeAI() {
+  aiPop.classList.remove('open'); aiFab.classList.remove('open');
+  aiPop.setAttribute('aria-hidden', 'true'); aiFab.setAttribute('aria-expanded', 'false');
+}
+aiFab.addEventListener('click', () => {
+  if (aiPop.classList.contains('open')) closeAI(); else openAI();
+});
+$('#aiPopClose').addEventListener('click', closeAI);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAI(); });
+/* 点击小窗与悬浮球以外的区域即收起（比全屏遮罩更轻，不打断浏览） */
+document.addEventListener('click', e => {
+  if (!aiPop.classList.contains('open')) return;
+  if (aiPop.contains(e.target) || aiFab.contains(e.target)) return;
+  closeAI();
+});
+
+const hints = ['基于当前页面提问…', '这页讲了什么？', '帮我找出关联文件', '总结我今天的记录'];
+(function typing(i = 0, pos = 0, del = false) {
+  const input = $('#aiPopInput');
+  /* 小窗收起时停掉打字机，别让它在后台空转 */
+  if (!aiPop.classList.contains('open')) {
+    input.placeholder = hints[0];
+    return setTimeout(() => typing(0, 0, false), 900);
+  }
+  const cur = hints[i];
+  input.placeholder = cur.slice(0, pos);
+  let delay = del ? 34 : 68;
+  if (!del && pos === cur.length) { delay = 1600; del = true; }
+  else if (del && pos === 0) { del = false; i = (i + 1) % hints.length; delay = 260; }
+  setTimeout(() => typing(i, pos + (del ? -1 : 1), del), delay);
+})();
+
+function aiReply(text) {
+  const msgs = $('#aiPopMsgs'), input = $('#aiPopInput');
+  const t = text || input.value.trim();
+  if (!t) return;
+  const u = document.createElement('div');
+  u.className = 'msg user';
+  u.innerHTML = '<div class="m-avatar">暖</div><div class="m-bubble"></div>';
+  u.querySelector('.m-bubble').textContent = t;
+  msgs.appendChild(u);
+  input.value = '';
+  u.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  setTimeout(() => {
+    const a = document.createElement('div');
+    a.className = 'msg ai';
+    a.innerHTML = '<div class="m-avatar">AI</div><div class="m-bubble"></div>';
+    a.querySelector('.m-bubble').textContent =
+      `我已读取「${pageNames[currentPage]}」页面的内容。这是原型占位回复，正式版将基于当前页面上下文作答。`;
+    msgs.appendChild(a);
+    a.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, 520);
+}
+$('#aiPopSend').addEventListener('click', () => aiReply());
+$('#aiPopInput').addEventListener('keydown', e => { if (e.key === 'Enter') aiReply(); });
+$$('.ai-quick button').forEach(b => b.addEventListener('click', () => aiReply(b.dataset.ask)));
+
+/* 首次进入时用一个气泡说明悬浮球的用途，避免"不知道右下角能点" */
+setTimeout(() => {
+  const hint = $('#fabHint');
+  if (!hint || aiPop.classList.contains('open')) return;
+  hint.classList.add('show');
+  setTimeout(() => hint.classList.remove('show'), 4600);
+}, 1100);
+</script>
+</body>
+</html>
