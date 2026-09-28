@@ -8,6 +8,8 @@ interface ContentShellProps {
   header?: boolean;
   /** false = 页面自己管布局与滚动（左右分栏 / 需要占满高度的页面用） */
   scroll?: boolean;
+  /** scroll=false 时用什么容器。默认 p-body-col；设置页用 settings-body（flex row + border-top） */
+  bodyClass?: string;
   children: ReactNode;
 }
 
@@ -18,6 +20,7 @@ export default function ContentShell({
   actions,
   header = true,
   scroll = true,
+  bodyClass,
   children,
 }: ContentShellProps) {
   return (
@@ -34,7 +37,7 @@ export default function ContentShell({
           <div className="p-scroll">{children}</div>
         </div>
       ) : (
-        <div className="p-body-col">{children}</div>
+        <div className={bodyClass ?? 'p-body-col'}>{children}</div>
       )}
     </>
   );

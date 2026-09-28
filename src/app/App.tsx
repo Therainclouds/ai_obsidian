@@ -8,8 +8,10 @@ import Orb from '../features/assistant/Orb';
 import KitPage from '../features/kit';
 import type { RouteKey } from '../../shared/types';
 
-/** 组件库页不是一级入口（侧栏固定 5 项，§1.3），用 hash 直达 */
-function useHashRoute(): string {
+const isRouteKey = (v: string): v is RouteKey => ROUTES.some((r) => r.key === v);
+
+/** hash 直达：#chat / #files / #graph / #summary / #settings / #kit。便于深链与验收。 */
+function useHash(): string {
   const [hash, setHash] = useState(() => window.location.hash.replace(/^#/, ''));
   useEffect(() => {
     const on = () => setHash(window.location.hash.replace(/^#/, ''));
@@ -21,28 +23,34 @@ function useHashRoute(): string {
 
 const SPACES = [
   { name: '我的空间', meta: '0 文件 · 0 知识点' },
-  { name: '工作', meta: '42 文件 · 18 知识点' },
-  { name: '读书笔记', meta: '18 文件 · 9 知识点' },
+  { name: '工作', meta: '0 文件 · 0 知识点' },
+  { name: '读书笔记', meta: '0 文件 · 0 知识点' },
 ];
 
 export default function App() {
-  const [active, setActive] = useState<RouteKey>('chat');
   const [space, setSpace] = useState(SPACES[0].name);
   const [theme, toggleTheme] = useTheme();
-  const hash = useHashRoute();
+  const hash = useHash();
   const health = useHostHealth();
+
+  const isKit = hash === 'kit';
+  const active: RouteKey = isRouteKey(hash) ? hash : 'chat';
+  const navigate = (key: RouteKey) => {
+    window.location.hash = key;
+  };
 
   const route = ROUTES.find((r) => r.key === active)!;
   const Page = route.Component;
-  const isKit = hash === 'kit';
   // 聊天页是居中满屏的：无页头、自己管滚动（对齐原型 #page-chat）
   const isChat = !isKit && active === 'chat';
+  // 设置页有页头，但页身是左右分栏、自己管滚动（对齐原型 #page-settings）
+  const isSettings = !isKit && active === 'settings';
 
   return (
     <div className="app">
       <Sidebar
         active={active}
-        onNavigate={setActive}
+        onNavigate={navigate}
         spaces={SPACES}
         space={space}
         onSpaceChange={setSpace}
@@ -57,7 +65,8 @@ export default function App() {
             title={isKit ? '组件库' : route.name}
             desc={isKit ? 'M1 产出 · hash #kit 直达，不属于一级入口' : route.desc}
             header={!isChat}
-            scroll={!isChat}
+            scroll={!isChat && !isSettings}
+            bodyClass={isSettings ? 'settings-body' : undefined}
           >
             {isKit ? <KitPage /> : <Page />}
           </ContentShell>
