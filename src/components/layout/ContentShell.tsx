@@ -14,7 +14,8 @@ export default function ContentShell({ title, desc, children }: ContentShellProp
         <h1 className="font-display text-[17px] font-semibold tracking-tight">{title}</h1>
         <p className="mt-0.5 text-[12.5px] text-ink-3">{desc}</p>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
+      {/* flex + min-h-0：让聊天这类需要占满高度的页面能拿 `h-full`，其余页面照旧靠这里滚动 */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5">{children}</div>
     </main>
   );
 }
