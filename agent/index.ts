@@ -13,6 +13,15 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HOST_PORT } from '../shared/ports.ts';
 import type { HealthPayload } from '../shared/types.ts';
+import {
+  AGENT_DELTA,
+  AGENT_DONE,
+  AGENT_ERROR,
+  AGENT_STAGE,
+  AGENT_STAGE_LABEL,
+  AGENT_STAGE_ORDER,
+  type AgentStageEvent,
+} from '../shared/events.ts';
 import { AcpClient, hermesAvailable, resolveHermes, type InitializeResult } from './acp-client.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -112,8 +121,8 @@ const server = createServer(async (req, res) => {
     });
   }
 
-  /** 发一轮对话，SSE 回流。前端与宿主只有这一条通道（§9.1.3） */
-  if (path === '/api/chat' && req.method === 'POST') {
+  /** 发一轮对话，SSE 回流。前端与宿主只有这一条通道（§9.1.3 · docs/接口规范.md §3.1） */
+  if (path === '/api/agent/chat' && req.method === 'POST') {
     let raw = '';
     for await (const chunk of req) raw += chunk;
     let text = '';
@@ -124,27 +133,33 @@ const server = createServer(async (req, res) => {
     }
     if (!text.trim()) return json(res, 400, { error: '空消息' });
 
+    const stage = (key: (typeof AGENT_STAGE_ORDER)[number]) =>
+      sseSend(res, AGENT_STAGE, {
+        stage: key,
+        label: AGENT_STAGE_LABEL[key],
+      } satisfies AgentStageEvent);
+
     sseOpen(res);
-    sseSend(res, 'stage', { stage: 'reading', label: '读取素材' });
+    stage(AGENT_STAGE_ORDER[0]);
 
     try {
       const c = await ensureAgent();
-      sseSend(res, 'stage', { stage: 'linking', label: '整合与关联' });
+      stage(AGENT_STAGE_ORDER[1]);
 
       c.setUpdateHandler((u) => {
         const t = u.update?.content?.text;
-        if (typeof t === 'string' && t) sseSend(res, 'delta', { text: t });
+        if (typeof t === 'string' && t) sseSend(res, AGENT_DELTA, { text: t });
       });
 
-      sseSend(res, 'stage', { stage: 'writing', label: '写知识点' });
+      stage(AGENT_STAGE_ORDER[2]);
       await c.prompt(sessionId!, text);
       agentError = null;
-      sseSend(res, 'done', { ok: true });
+      sseSend(res, AGENT_DONE, { ok: true });
     } catch (e) {
       const err = e as Error & { code?: number };
       agentError = err.message;
       // 失败不毁内容：用户写的留在对话里，错误只挂一条（§6.3.4）
-      sseSend(res, 'error', { code: err.code ?? null, message: err.message });
+      sseSend(res, AGENT_ERROR, { code: err.code ?? null, message: err.message });
     } finally {
       client?.setUpdateHandler(null);
       res.end();

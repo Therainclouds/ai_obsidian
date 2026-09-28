@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { IconArrowUp, IconAt, IconClose, IconPlus } from '../../components/icons';
+import {
+  AGENT_DELTA,
+  AGENT_ERROR,
+  AGENT_STAGE,
+  AGENT_STAGE_LABEL,
+  AGENT_STAGE_ORDER,
+  type AgentStageKey,
+} from '../../../shared/events';
 
 type Role = 'user' | 'assistant';
 interface Msg {
@@ -11,12 +19,13 @@ interface ErrShape {
   detail: string;
 }
 
-/** 「AI 正在做」的三段，正对应演化记录的 trigger（§6.3.1） */
-const STAGES = [
-  { key: 'reading', label: '读取素材' },
-  { key: 'linking', label: '整合与关联' },
-  { key: 'writing', label: '写知识点' },
-] as const;
+/** 「AI 正在做」的三段，正对应演化记录的 trigger（§6.3.1）。顺序与文案都由 shared 定 */
+const STAGES = AGENT_STAGE_ORDER.map((key) => ({ key, label: AGENT_STAGE_LABEL[key] }));
+
+/** 收到 SSE 的 stage 字段先校验，不信任网络来的字符串 */
+function isAgentStage(v: unknown): v is AgentStageKey {
+  return typeof v === 'string' && (AGENT_STAGE_ORDER as readonly string[]).includes(v);
+}
 
 const SUGGESTS: Array<{ label: string; q: string }> = [
   { label: '总结本周新增笔记', q: '帮我总结本周新增的笔记' },
@@ -67,7 +76,7 @@ export default function ChatPage() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
-  const [stage, setStage] = useState<string | null>(null);
+  const [stage, setStage] = useState<AgentStageKey | null>(null);
   const [err, setErr] = useState<ErrShape | null>(null);
   const [agentReady, setAgentReady] = useState(false);
   const [bubbleDismissed, setBubbleDismissed] = useState(false);
@@ -93,7 +102,7 @@ export default function ChatPage() {
     setStage('reading');
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ text: t }),
@@ -120,8 +129,11 @@ export default function ChatPage() {
           const ev = evLine[1].trim();
           const data = JSON.parse(dataLine[1]) as Record<string, unknown>;
 
-          if (ev === 'stage') setStage(String(data.stage ?? ''));
-          else if (ev === 'delta') {
+          if (ev === AGENT_STAGE) {
+            const s = data.stage;
+            if (isAgentStage(s)) setStage(s);
+          }
+          else if (ev === AGENT_DELTA) {
             answer += String(data.text ?? '');
             setMsgs((m) => {
               const next = [...m];
@@ -130,7 +142,7 @@ export default function ChatPage() {
               else next.push({ role: 'assistant', text: answer });
               return next;
             });
-          } else if (ev === 'error') {
+          } else if (ev === AGENT_ERROR) {
             setErr({
               headline: String(data.message ?? '未知错误'),
               detail: data.code !== null && data.code !== undefined ? `acp · code ${data.code}` : 'acp',

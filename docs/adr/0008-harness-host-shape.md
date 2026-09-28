@@ -65,6 +65,19 @@ ADR-0004 §1 说内存是硬预算、ADR-0004 §6 要求实测 Hermes 常驻内�
 
 ADR-0005 规则 4 写的是「技能文件住 `agent/skills/`」、ADR-0006 写的是「`agent/harness/` 维护空间解析」——两处指的本来就是**仓库顶层**。§9.3 把它嵌进 `src/` 是个笔误级的错位，正是它让"宿主在哪"变得看不出来。本 ADR 明确：`src/` 是浏览器产物、`agent/` 是宿主进程、`shared/` 是两者共用的类型。
 
+### 6.1 · 通道选型复核（2026-09-28 · 依据「通道直接走最稳定的」）
+
+**结论：维持 stdio + HTTP/SSE 不变**，并把理由补全：
+
+| 段 | 选型 | 否决的候选 | 理由 |
+|---|---|---|---|
+| 宿主 ↔ agent 运行时 | **stdio JSON-RPC（ACP）** | TCP/IPC bridge broker | broker 解决的是**多方共享一个 agent**。我们只有一个宿主、一个 agent，多一层 broker 只多一类故障（端口占用 / socket 残留 / 鉴权面）。stdlib 还自带"子进程生命周期绑定父进程"，正好满足"一个 home 一个 agent" |
+| 渲染器 ↔ 宿主 | **HTTP + SSE** | WebSocket / Socket.IO | 我们只需要**单向流**；`EventSource` 内建自动重连，无 upgrade 握手，零新依赖。Socket.IO 面向的是 Web 终端 PTY + 群聊 + 多 agent 并发流那种场景，不是我们的形状 |
+
+**唯一会推翻这个选择的情形**：出现真正的双向高频交互（如小窗与主聊天并发流 + 需要**中途打断生成**）。届时换的是同一通道两端，接口形状不变。
+
+> 参考对象 `EKKOLearnAI/ekko-studio`（原 Hermes Studio，11.2k star）在上述两处都与我们不同 —— 差异原因与逐条对照见 `docs/接口规范.md` §5。它的**分层依赖规则**被我们采纳。
+
 ### 7 · 尚未定
 
 - **用户可见的 `gateway` 字样指谁**：§6.3.3 的 X1 文案里有 `gateway · upstream_timeout`，而文档叙述中的"gateway"一直指的是 agent 运行时（ADR-0006 的"切空间要换一个 gateway"）。宿主引入后出现了第三个候选。这条留待设计侧收口，不在本 ADR 内决断。
