@@ -43,6 +43,8 @@ export default function App() {
   const isChat = active === 'chat';
   // 设置页有页头，但页身是左右分栏、自己管滚动（对齐原型 #page-settings）
   const isSettings = active === 'settings';
+  // 文件管理同样是左右分栏 + 底部状态栏（对齐原型 #page-files）
+  const isFiles = active === 'files';
 
   return (
     <div className="app">
@@ -63,8 +65,20 @@ export default function App() {
             title={route.name}
             desc={route.desc}
             header={!isChat}
-            scroll={!isChat && !isSettings}
-            bodyClass={isSettings ? 'settings-body' : undefined}
+            scroll={!isChat && !isSettings && !isFiles}
+            bodyClass={isSettings ? 'settings-body' : isFiles ? 'files-body' : undefined}
+            actions={
+              isFiles ? (
+                <>
+                  <button className="ghost-btn" type="button">
+                    导入文件
+                  </button>
+                  <button className="primary-btn" type="button">
+                    AI 整理
+                  </button>
+                </>
+              ) : undefined
+            }
           >
             <Page />
           </ContentShell>

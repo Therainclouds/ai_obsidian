@@ -1,0 +1,141 @@
+/**
+ * 关联图视图 —— SVG 逐条抄自 `design/prototype/index-final.html` 的 `#graphView`。
+ *
+ * ⚠ **这里画的是「坐标已算好」的结果，节点坐标是硬编码的示例值。**
+ * 真实的力导向布局等一条未定项落地再写：§10.2 B 原写「坐标必须在云端算」，
+ * 与 §6.2 把「重排图谱」归为**本地有耗时**（只给骨架、不出网）直接冲突。
+ * 二者择一之前，不做真实布局。
+ *
+ * 四色节点全部来自 token（`--node-1..4`），没有第四色。
+ */
+export default function GraphView() {
+  return (
+    <div className="graph-view">
+      <svg viewBox="0 0 900 560">
+        <line className="g-edge hot" id="fe1" x1="450" y1="260" x2="300" y2="160" />
+        <line className="g-edge hot" id="fe2" x1="450" y1="260" x2="610" y2="170" />
+        <line className="g-edge hot" id="fe3" x1="450" y1="260" x2="330" y2="380" />
+        <line className="g-edge" id="fe4" x1="450" y1="260" x2="590" y2="370" />
+        <line className="g-edge" id="fe5" x1="300" y1="160" x2="200" y2="250" />
+        <line className="g-edge" id="fe6" x1="610" y1="170" x2="710" y2="260" />
+        <line className="g-edge" id="fe7" x1="330" y1="380" x2="200" y2="420" />
+        <line className="g-edge" id="fe8" x1="590" y1="370" x2="710" y2="420" />
+        <line className="g-edge" id="fe9" x1="300" y1="160" x2="180" y2="110" />
+        <line className="g-edge" id="fe10" x1="610" y1="170" x2="740" y2="120" />
+
+        {/* 沿边运行的光：走的是"近期活跃关联" */}
+        <circle className="flow" r="3.4">
+          <animateMotion dur="2.8s" repeatCount="indefinite">
+            <mpath href="#fe1" />
+          </animateMotion>
+        </circle>
+        <circle className="flow" r="3.4">
+          <animateMotion dur="3.4s" repeatCount="indefinite">
+            <mpath href="#fe2" />
+          </animateMotion>
+        </circle>
+        <circle className="flow" r="3.4">
+          <animateMotion dur="3.1s" repeatCount="indefinite">
+            <mpath href="#fe3" />
+          </animateMotion>
+        </circle>
+        <circle className="flow-2" r="2.6">
+          <animateMotion dur="4.2s" repeatCount="indefinite">
+            <mpath href="#fe5" />
+          </animateMotion>
+        </circle>
+        <circle className="flow-2" r="2.6">
+          <animateMotion dur="4.6s" repeatCount="indefinite">
+            <mpath href="#fe6" />
+          </animateMotion>
+        </circle>
+
+        <g className="g-node">
+          <circle cx="450" cy="260" r="15" style={{ fill: 'var(--node-1)' }} />
+          <text className="strong" x="450" y="292" textAnchor="middle">
+            增长模型.md
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="300" cy="160" r="11" style={{ fill: 'var(--node-2)' }} />
+          <text x="300" y="140" textAnchor="middle">
+            小红书运营手册
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="610" cy="170" r="11" style={{ fill: 'var(--node-2)' }} />
+          <text x="610" y="150" textAnchor="middle">
+            AI 产品观察
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="330" cy="380" r="10" style={{ fill: 'var(--node-3)' }} />
+          <text x="330" y="408" textAnchor="middle">
+            认知觉醒
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="590" cy="370" r="9" style={{ fill: 'var(--node-3)' }} />
+          <text x="590" y="396" textAnchor="middle">
+            竞品调研.pdf
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="200" cy="250" r="6" style={{ fill: 'var(--node-4)' }} />
+          <text x="200" y="272" textAnchor="middle">
+            爆款公式
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="710" cy="260" r="6" style={{ fill: 'var(--node-4)' }} />
+          <text x="710" y="282" textAnchor="middle">
+            Agent 趋势
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="200" cy="420" r="5" style={{ fill: 'var(--node-4)' }} />
+          <text x="200" y="440" textAnchor="middle">
+            习惯回路
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="710" cy="420" r="5" style={{ fill: 'var(--node-4)' }} />
+          <text x="710" y="440" textAnchor="middle">
+            Notion AI
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="180" cy="110" r="5" style={{ fill: 'var(--node-4)' }} />
+          <text x="180" y="96" textAnchor="middle">
+            选题库
+          </text>
+        </g>
+        <g className="g-node">
+          <circle cx="740" cy="120" r="5" style={{ fill: 'var(--node-4)' }} />
+          <text x="740" y="106" textAnchor="middle">
+            RAG 笔记
+          </text>
+        </g>
+      </svg>
+
+      <div className="graph-legend">
+        <span>
+          <i style={{ background: 'var(--node-1)' }} />
+          当前文件
+        </span>
+        <span>
+          <i style={{ background: 'var(--node-2)' }} />
+          直接关联
+        </span>
+        <span>
+          <i style={{ background: 'var(--node-3)' }} />
+          知识点
+        </span>
+        <span>
+          <i style={{ background: 'var(--node-4)' }} />
+          次级关联
+        </span>
+      </div>
+    </div>
+  );
+}

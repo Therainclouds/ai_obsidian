@@ -1,5 +1,6 @@
 @import './tokens.css';
 @import './settings.css';
+@import './files.css';
 
 @tailwind base;
 @tailwind components;
@@ -866,7 +867,9 @@
 }
 .err-bar {
   display: flex;
+  align-items: flex-start;
   gap: 10px;
+  margin-bottom: 14px;
   padding: 11px 14px;
   border-radius: var(--r-md);
   border: 1px solid var(--accent-mid);
@@ -875,6 +878,10 @@
   font-size: 12px;
   line-height: 1.62;
   animation: errIn 0.34s var(--ease-quart) both;
+}
+/* 对话流里的那条要在消息列内、不要底部外边距（否则气泡会被顶开） */
+.msg-err .err-bar {
+  margin-bottom: 0;
 }
 .msg-err {
   margin-left: 38px;
@@ -1025,4 +1032,89 @@
   .fab-hint {
     display: none;
   }
+}
+
+/* ---------- 空态 · 四型共用骨架（跨页面）----------
+   E1 首次 / E2 中性 / E3 筛选后 / E4 搜索无果
+   图形一律用几何描边，不用插画（插画会引入第四色） */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 56px 24px;
+  animation: riseIn 0.5s var(--ease-quart) both;
+}
+.empty-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border: 1.5px solid var(--brand-mid);
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+.empty-mark.mute {
+  border-color: var(--line);
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+.empty-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.empty-desc {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  max-width: 360px;
+  line-height: 1.68;
+}
+.empty-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 5px;
+}
+.empty.sm {
+  padding: 32px 20px;
+  gap: 9px;
+}
+.empty.sm .empty-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.empty.sm .empty-title {
+  font-size: 13px;
+}
+.empty.sm .empty-desc {
+  font-size: 11.5px;
+  max-width: 280px;
+}
+.empty.kw em {
+  font-style: normal;
+  color: var(--ink);
+  background: var(--surface-3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.94em;
+}
+
+/* 状态层：铺满内容区、压住旧内容 —— 用于整块内容被替换的场景 */
+.state-layer {
+  position: absolute;
+  inset: 0;
+  background: var(--surface);
+  overflow-y: auto;
+  z-index: 2;
+}
+.state-layer > .empty {
+  min-height: 100%;
 }
