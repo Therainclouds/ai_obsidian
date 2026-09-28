@@ -990,7 +990,7 @@ details.adv>summary:hover{color:var(--ink)}
           <textarea id="chatInput" rows="1" placeholder="问点什么，或让我帮你整理知识…"></textarea>
           <div class="composer-foot">
             <button class="tool-btn" title="附加文件">＋</button>
-            <button class="tool-btn" title="引用知识">⌘</button>
+            <button class="tool-btn" title="带上知识点">⌘</button>
             <span class="composer-meta">上下文：全库</span>
             <button class="send-btn" id="chatSend" title="发送">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
@@ -1984,7 +1984,7 @@ function sendChat(text) {
       if (think) think.outerHTML = '<div class="think-sum"><i></i>'
         + '<span class="tk-trail">读取 3 份素材 · 找到 2 处连接 · 产出 1 个知识点</span>'
         + '<span class="tk-go">在进化图谱里看 →</span></div>';
-      pushMsg('ai', '收到。我把《竞品调研.pdf》与之前两次对话一起读了，已经蒸馏成知识点「低粉爆款三要素」——原型占位回复，正式版会给出可点开的引用来源。');
+      pushMsg('ai', '收到。我把《竞品调研.pdf》与之前两次对话一起读了，已经蒸馏成知识点「低粉爆款三要素」——原型占位回复，正式版会给出可点开的「依据」卡片。');
     }, 420);
   })();
 }
