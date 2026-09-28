@@ -10,7 +10,7 @@ import {
   HOST_ERROR,
   type AgentStageKey,
 } from '../../../shared/events';
-import { hostAgentChat, hostAgentStatus } from '../../api/host';
+import { agentChat, agentStatus } from '../../api/host';
 
 type Role = 'user' | 'assistant';
 interface Msg {
@@ -87,7 +87,7 @@ export default function ChatPage() {
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    void hostAgentStatus()
+    void agentStatus()
       .then((d) => setAgentReady(Boolean(d.initialized)))
       .catch(() => setAgentReady(false));
   }, []);
@@ -115,7 +115,7 @@ export default function ChatPage() {
     };
 
     try {
-      hostAgentChat(t, (event, data) => {
+      agentChat(t, (event, data) => {
         const d = data as Record<string, unknown>;
 
         if (event === AGENT_STAGE) {

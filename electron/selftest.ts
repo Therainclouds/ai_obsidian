@@ -15,7 +15,10 @@
 import type { BrowserWindow } from 'electron';
 
 const PROBE = `(async () => {
-  const out = { bridge: false, health: null, healthErr: null, agent: null, agentErr: null, whitelist: 'unknown' };
+  const out = {
+    bridge: false, health: null, healthErr: null, agent: null, agentErr: null,
+    whitelist: 'unknown', stub: 'unknown', unknown: 'unknown',
+  };
   if (typeof window.host !== 'object' || window.host === null) return out;
   out.bridge = true;
 
@@ -27,9 +30,15 @@ const PROBE = `(async () => {
     out.agent = { installed: s.installed, initialized: s.initialized, hasSession: s.hasSession };
   } catch (e) { out.agentErr = String((e && e.message) || e); }
 
-  try { await window.host.invoke('__not_in_table__'); out.whitelist = 'ACCEPTED（白名单失效！）'; }
-  catch { out.whitelist = 'rejected'; }
+  // ① 已定名但未实现 → 必须是"尚未实现"（与 ② 分得开）
+  try { await window.host.invoke('space.list'); out.stub = 'ACCEPTED（不该通过）'; }
+  catch (e) { out.stub = String((e && e.message) || e).includes('尚未实现') ? 'not-built' : 'wrong-msg'; }
 
+  // ② 表外的名字 → 必须是"未知方法"（白名单，ADR-0009 §2）
+  try { await window.host.invoke('__not_in_table__'); out.unknown = 'ACCEPTED（白名单失效！）'; }
+  catch (e) { out.unknown = String((e && e.message) || e).includes('未知方法') ? 'rejected' : 'wrong-msg'; }
+
+  out.whitelist = out.unknown;
   return out;
 })()`;
 
@@ -39,7 +48,10 @@ export async function runSelfTest(win: BrowserWindow): Promise<void> {
     result.bridge === true &&
     result.health !== null &&
     result.agent !== null &&
-    result.whitelist === 'rejected';
+    // 已定名但未实现 → "尚未实现"
+    result.stub === 'not-built' &&
+    // 表外的名字 → "未知方法"。**两者混成一句话就没法调试了**
+    result.unknown === 'rejected';
 
   console.log(`[selftest] ${ok ? '通过' : '未通过'}`);
   console.log(`[selftest] 结果 ${JSON.stringify(result)}`);

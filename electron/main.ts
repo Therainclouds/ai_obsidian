@@ -20,7 +20,7 @@ import {
   streamChannel,
   type StreamFrame,
 } from '../shared/ipc.ts';
-import { INVOKE, STREAM } from '../agent/ipc.ts';
+import { channelCoverage, INVOKE, STREAM } from '../agent/ipc.ts';
 import { disposeAgent, getStatus } from '../agent/services/agent.service.ts';
 import { runSelfTest } from './selftest.ts';
 
@@ -125,6 +125,10 @@ app.whenReady().then(() => {
   console.log(
     `[host] agent 运行时: ${installed ? `已就绪（${agentInfo?.name ?? '已初始化'}）` : '未找到'}`,
   );
+
+  // 接口面的账：已定名的方法全部注册了（未实现的抛"尚未实现"），打一行省得每次去数
+  const cov = channelCoverage();
+  console.log(`[host] 接口: 已实现 ${cov.done} / 已定名 ${cov.total}（留空清单见 docs/接口规范.md §4）`);
 
   // macOS 习惯：点 dock 图标且没有窗口时重建。目标机是 Linux，保留无害
   app.on('activate', () => {

@@ -17,6 +17,8 @@ declare global {
         payload: unknown,
         onEvent: (event: string, data: unknown) => void,
       ): () => void;
+      /** 全局事件订阅。返回取消订阅的函数 */
+      on(onEvent: (event: string, data: unknown) => void): () => void;
     };
   }
 }

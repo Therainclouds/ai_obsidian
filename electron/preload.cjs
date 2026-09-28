@@ -16,6 +16,7 @@ const HOST_INVOKE = 'host:invoke';
 const HOST_STREAM = 'host:stream';
 const HOST_CANCEL = 'host:cancel';
 const HOST_STREAM_PREFIX = 'host:stream:';
+const HOST_EVENT = 'host:event';
 
 /** 流的序号。一次流一个通道，避免多条流互相串帧 */
 let seq = 0;
@@ -24,6 +25,18 @@ contextBridge.exposeInMainWorld('host', {
   /** 一问一答。`channel` 是业务方法名，如 `'health'` */
   invoke(channel, payload) {
     return ipcRenderer.invoke(HOST_INVOKE, channel, payload);
+  },
+
+  /**
+   * 宿主主动推的**全局事件**（演化记录 / Hook 进度 / 素材入库），返回取消订阅的函数。
+   *
+   * 与 `stream` 分开的理由（§3.3）：对话是"我问你答"，事件是"**系统自己发生的事**"。
+   * 混在一条流里，"哪条消息属于哪一轮"就得靠 id 猜。
+   */
+  on(cb) {
+    const listener = (_e, frame) => cb(frame.event, frame.data);
+    ipcRenderer.on(HOST_EVENT, listener);
+    return () => ipcRenderer.removeListener(HOST_EVENT, listener);
   },
 
   /**
