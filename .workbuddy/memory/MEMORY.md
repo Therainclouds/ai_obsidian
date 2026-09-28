@@ -84,6 +84,7 @@
 - **推翻一条 ADR 时，先找它里面"仍然对"的部分**：ADR-0009 之所以只花约 150 行就推翻了 ADR-0008，是因为后者把宿主逻辑收在 `agent/` 一个根里。**分层是对的，只有选项判断错了**——写新 ADR 时把这条红利明确写出来（"保留且升值"那节），否则下一个会话会以为可以把整个 ADR-0008 丢掉。
 - **本机环境**（Windows）：`python` 不在 PATH，用 **`py`** 启动器（3.12）；node v24 / npm / pnpm 有；**`hermes` 未安装**——目标机是 ARM64 设备，本机不装是对的。宿主起来了端口冲突是真的（`node agent/index.ts` 已在跑时再起会 EADDRINUSE）——先 `Get-NetTCPConnection -LocalPort 8787` 看有没有在跑。
 - **git commit 用 `-m` 且信息里含引号会被 PowerShell 吃掉**：中文引号安全，**英文 `"` 会截断参数**，导致 `git commit` 把后半句当成 pathspec 而失败（工作区看起来"没提交"）。做法：把信息写进临时文件，用 `git commit -F $file`。
+- **判断 `git push` 成没成，只看 `git ls-remote origin refs/heads/main`，不要靠输出文本匹配**：PowerShell 会把原生命令的 stderr 包成错误记录，文本里含 `NativeCommandError`——而 `-match` **默认不区分大小写**，`'error'` 会命中它，于是**每次成功都被判成失败**（实测：我因此误报了一次"推送全部失败"，其实第一次就成功了）。同理 `git --no-pager status -sb` 的 `[ahead N]` 标记比任何文本匹配都可靠。
 
 ## 下一步
 **实现阶段进行中**。状态：**9 条 ADR** 全通 / `CONTEXT.md` 校验 PASS（27 术语）/ 规格书 **v1.5** / 原型自检 + 18 张截图全绿 / 仓库已推 GitHub（`Therainclouds/ai_obsidian`，`main`）。
