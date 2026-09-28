@@ -63,3 +63,39 @@ ADR-0002 的 cwd 边界在同机形态下没有跨主机路径问题——就是
 - **补 · 由 ADR-0008 关闭一处漏问**：本 ADR 答的是"**agent 运行时**跑在哪"，但没有回答"**谁拉起它、Harness 住在哪个进程里**"——规格书 §9.1 只列了前端栈，§9.3 却把 `acp-client.ts` / `spaces.ts` / `model-config.ts` 放在 `src/` 下，而浏览器没有进程与文件系统。ADR-0008 补上：**本地宿主**（Node 常驻）承载 Harness 与 ACP 客户端，**agent 运行时是它的子进程**，浏览器只做渲染。
 - **本 ADR §6 的验收项随之改写**：实测对象由"Hermes 进程"改为"**宿主 + agent 两个进程之和**"——宿主自己也进内存预算（ADR-0008 §5）。
 - **撤销规格书 §9.1.1 的一处旧句**：原文「云端 = 编排 Harness + 决策层 + 生成层 + 索引」与本 ADR 冲突——Harness 若在云端，就无法以本地路径为 cwd、无法写设备上的演化记录、无法读 `~/.hermes/config.yaml`，本 ADR 的整条论证会瓦解。该句已在 DESIGN-SPEC **v1.4** 撤销。
+
+### 2026-09-27 核实：本 ADR「已核实的技术事实」表有三处要改
+
+> 依据：官方 Installation 页、Platform Support 页、Package Management 页（均未执行其中任何命令）。
+
+| # | 原文 | 核实结果 |
+|---|---|---|
+| 1 | **最低配置（官方安装页）1 vCPU / 512MB / 2GB**（推荐 1GB） | **来源未落实。** Installation 与 Platform Support 两页**均无任何量化的最低硬件要求**。原表标为"已核实（官方安装页）"，本次未能复现该出处 → **降级为未核实**，不再作为内存预算依据；预算改由 M0 实测给出 |
+| 2 | **架构支持：ARM64 / Linux 支持** | **成立，但带前提。** Platform Support 明确列出 **Linux / WSL2 (x86_64, aarch64) = Tier 1**（install.sh）；Windows 10/11 (x86_64, aarch64) 亦为 Tier 1 → 设备在受支持范围内。但官方原话的前提是「distro 有 **glibc**、**systemd**、遵循 **FHS**」才"likely to work pretty well" → **需确认设备上跑的是什么发行版**，这点不确认就落不到 Tier 1。<br>**2026-09-28 确认：设备跑 Armbian**（Debian/Ubuntu 系）→ glibc ✓ systemd ✓ FHS ✓，**Tier 1 前提成立** |
+| 3 | ——（原表未涉及） | **裸装会带 Chromium，必须显式跳过**：`pm install` 裸装会顺带安装默认可选工具 `agent-browser` 及其**固定版本 Chromium**，下载失败只警告不中断。而 ADR-0002 白名单明确关闭 `browser` → **部署命令必须带 `--skip-browser`（POSIX）/ `-SkipBrowser`（Windows）**，等价于 `pm install --without agent-browser`；该选择**会被记住**，后续 `hermes update` 不会加回 |
+
+### 2026-09-28 实测：设备实况与本文档的假设不符
+
+> 在 `6.6.6.192`（Armbian 26.05.0 bookworm）上实测。只读采集，未在设备上做任何部署。
+
+| 项 | 本文档原假设 | 实测 |
+|---|---|---|
+| 芯片 | Rockchip RK3528 | **Amlogic S905L3A**（meson-g12a，板子 M41A —— 电视盒子） |
+| 内存 | 4 GB | **1.94 GB**，**swap = 0**，可用约 1.2 GB，已用 732 MB |
+| 磁盘 | —— | 14 GB 总量，**可用 5.0 GB**（63% 已用） |
+| 网络位置 | **局域网内**单用户设备 | **公网可达的多服务主机**：跑着 nginx / 1Panel / ttyd / docker（npm、filebrowser、hermes-webui）/ **quanthermes-kiosk**，并反代 7 个域名与多台内网机器 |
+| Hermes | 待装 | **已装** v0.15.2（Python 3.11），provider `minimax-cn`，密钥已配，`~/.hermes` 2.5 GB |
+
+**后果**
+
+1. **内存预算从 4GB 砍到 2GB**，且已有 chromium kiosk 与 node web-ui 在占用 → ADR-0008 §5 的「宿主 + Hermes 两进程」常驻实测**不再是"测一下"，而是很可能测不过**
+2. **「素材不离开设备」的隐私前提在这台机器上不成立** —— 它同时反代别的内网机器、对外提供多个域名服务
+3. `HERMES_HOME` 被指到 `/opt/hermes-web-ui/hermes_data`（已有部署），不是默认的 `~/.hermes` → 跑任何验证都要显式指定，别污染已有配置
+4. `hermes acp` **缺 ACP 依赖**（`ACP dependencies not installed`），需先补 `acp` extra
+
+→ **在真正的目标设备定下来之前，ADR-0004 的部署结论处于「待重新锚定」状态。**
+
+**另外两条新事实**
+
+4. **pypi / pip 安装被官方列为 unsupported** —— Platform Support 的 UNSUPPORTED 明确含 `installs via pypi (uv tool install / pip install hermes-agent)`、brew、AUR → 部署**只能走 install.sh 或 Docker**，不要自建 venv。
+5. **PM 会拉一整套受管运行时** —— 固定版本 Python 3.14 + Node.js + npm + ripgrep + FFmpeg，落在 `tools/` 下（`pm gc` 可回收）→ M0 实测项除两个进程外，**还要量磁盘占用**。

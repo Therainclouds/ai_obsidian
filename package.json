@@ -1,0 +1,29 @@
+{
+  "name": "ai-obsidianlike",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "个人 AI 知识系统 · M0 骨架（设计基准：design/DESIGN-SPEC.md v1.4）",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "host": "node agent/index.ts",
+    "start": "npm run build && npm run host",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  }
+}

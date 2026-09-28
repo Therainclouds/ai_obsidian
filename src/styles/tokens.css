@@ -1,0 +1,76 @@
+/* ============================================================
+   配色黄金律 —— 所有色值由「主色色相」算出来，不手工挑色
+   律1 面积：中性面 60% / 文字与结构 30% / 主色 + 点缀 10%
+   律2 中性面：与主色同色相 H，彩度 C≤0.014，只动明度 L
+   律3 点缀色：主色 H + 137.5°（黄金角）
+
+   本文件由 design/palette-gen.py 生成（靛 Indigo 段），勿手改。
+   换主色 = 换一个色相种子，重跑脚本后整段替换。
+   ============================================================ */
+:root {
+  /* 靛 Indigo · 白天 · 主色相 H=271.3° · 点缀相 H=48.8° */
+  color-scheme: light;
+  --bg: #EFF1F7;
+  --surface: #FFFFFF;
+  --surface-2: #F6F7FC;
+  --surface-3: #E7EAF1;
+  --ink: #161821;
+  --ink-2: #5B5F6C;
+  --ink-3: #70747F;
+  --line: #DADDE6;
+  --line-soft: #E6E8EF;
+  --brand: #3B4CC0;
+  --brand-deep: #2D3B9E;
+  --brand-soft: #E1E9FF;
+  --brand-ink: #2F3EA1;
+  --brand-mid: #ABBAEA;
+  --on-brand: #FFFFFF;
+  --accent: #B35618;
+  --accent-soft: #FFE7DB;
+  --accent-ink: #914000;
+  --accent-mid: #DB9E7E;
+  --node-1: #3B4CC0;
+  --node-2: #A6B5E6;
+  --node-3: #B35618;
+  --node-4: #C7C9CD;
+  --orb-core: #4F65CF;
+  --orb-edge: #1D2863;
+  --orb-light: #99ADF4;
+  --shadow-1: 0 1px 3px rgba(16, 19, 29, 0.07);
+  --shadow-2: 0 10px 30px -12px rgba(16, 19, 29, 0.2);
+  --shadow-3: 0 24px 64px -20px rgba(16, 19, 29, 0.28);
+}
+
+:root[data-theme='dark'] {
+  /* 靛 Indigo · 黑夜 */
+  color-scheme: dark;
+  --bg: #0D0F15;
+  --surface: #16181F;
+  --surface-2: #1D2027;
+  --surface-3: #272931;
+  --ink: #E8EAF0;
+  --ink-2: #9A9DA7;
+  --ink-3: #81848D;
+  --line: #2D3037;
+  --line-soft: #22242B;
+  --brand: #88A0F6;
+  --brand-deep: #A4B9FF;
+  --brand-soft: #1B223B;
+  --brand-ink: #AFC1FF;
+  --brand-mid: #425086;
+  --on-brand: #111524;
+  --accent: #E58C5B;
+  --accent-soft: #371E11;
+  --accent-ink: #F7B28D;
+  --accent-mid: #72462F;
+  --node-1: #88A0F6;
+  --node-2: #49578B;
+  --node-3: #E58C5B;
+  --node-4: #4B4D53;
+  --orb-core: #677EDD;
+  --orb-edge: #1E285A;
+  --orb-light: #B6C6F6;
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.42);
+  --shadow-2: 0 10px 30px -12px rgba(0, 0, 0, 0.62);
+  --shadow-3: 0 24px 64px -20px rgba(0, 0, 0, 0.74);
+}

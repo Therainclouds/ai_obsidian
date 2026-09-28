@@ -9,6 +9,9 @@ build/
 *.tsbuildinfo
 .vite/
 
+# 由 design/palette-gen.py 生成的中间产物（正式 token 落 src/styles/tokens.css）
+design/_tokens.css
+
 # 环境与密钥（模型密钥只走 Hermes 原生配置，不进仓库 —— ADR-0003）
 .env
 .env.local

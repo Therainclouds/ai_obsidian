@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": ["node"],
+    // 宿主由 Node 24 直接跑 TS（type stripping），因此 import 必须带 .ts 后缀
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "agent", "shared", "vite.config.ts", "tailwind.config.js"]
+}

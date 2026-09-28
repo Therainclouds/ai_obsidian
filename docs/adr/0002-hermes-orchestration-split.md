@@ -62,3 +62,42 @@ Hermes 的硬约束：两个进程指向同一 home 会互相污染运行记忆�
 ### 6 · 规格书需要新增一节
 
 「Agent 接入层」写入 DESIGN-SPEC §9.6，承载本 ADR 的全部条款；设置页新增「AI 模型」面板（§5.4），配置归属见 ADR-0003。
+
+## 后续修订（2026-09-28 · 以 Hermes 源码为准校核白名单）
+
+> 依据：本机**已安装**的 Hermes 源码 `%LOCALAPPDATA%\hermes\hermes-agent/`，版本 `v0.21.4+canary.20260927T065737Z-633-g6e69a8933a`（commit `6e69a8933a`）。权威定义在 `toolsets.py::TOOLSETS`。**只读源码与 git，未执行 hermes、未改动任何配置。**
+> 附带的发现：本机早就装好了 Hermes（1.07 GB / 58551 文件，`state.db` 16 MB，config 备份日期 20260515），只是没进 PATH。→ **M0a 不需要再安装**，装上设备时另说。
+
+### 1 · 白名单里有两个名字写错了：工具名 ≠ 工具集名
+
+`--toolsets` / `hermes tools` / `disabled_toolsets` 收的是**工具集名**，`validate_toolset()` 只认工具集名。本 ADR 原表有两行误用了**工具名**：
+
+| 原表写法（错） | 正确的工具集名 | 该工具集里装的工具 |
+|---|---|---|
+| `execute_code` | **`code_execution`** | `execute_code` |
+| `delegate_task` | **`delegation`** | `delegate_task` |
+
+其余九项（`file` / `skills` / `session_search` / `vision` / `terminal` / `web` / `browser` / `memory` / `todo`）**核对无误**，不用改。
+
+不改的后果：`--toolsets` 会直接把这两个值当非法值拒掉，白名单配不进去。
+
+### 2 · `file` 是原子的，按路径切分做不了 —— 作用域切必须换一处落
+
+源码定义（原文）：
+
+```python
+"file": _ts("File manipulation tools: read, write, patch (with fuzzy matching), and search",
+            ["read_file", "write_file", "patch", "search_files"])
+```
+
+四个工具**同一个开关**，工具集系统**没有 per-path 粒度**。
+
+→ ADR-0005 修订那句「`file` write/patch：知识空间根关 · `~/.hermes/` 开」**无法用工具集开关表达**。落地改到宿主侧：ACP 里 agent 通过 **`session/request_permission`** 反向请求（multica 的 handler 也证实这条存在），**由我们的宿主应答**——写目标不在 `~/.hermes/` 的一律拒。
+
+这样作用域切从"配置项"变成"我们代码里的一个判断"，反倒更硬。
+
+> **待实机验证**：确认 `request_permission` 的载荷里带得着写入路径（并入 M0a 的 1c）。
+
+### 3 · 一条顺带确认
+
+`skills` 工具集 = `skills_list` / `skill_view` / **`skill_manage`** —— agent **能自己创建与编辑技能**。这与 ADR-0005 修订「放开用户技能」方向一致，不是意外。
