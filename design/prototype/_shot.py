@@ -83,6 +83,12 @@ def build(state):
 
 
 def main():
+    # Windows 默认控制台是 GBK，打印 ✓ / ✗ 会 UnicodeEncodeError 直接崩掉 ——
+    # 图片其实已经写好了，只是汇总那一步报不出来，看着像"截图失败"。
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError):
+        pass
     names = sys.argv[1:] or list(STATES)
     browser = next((b for b in BROWSERS if pathlib.Path(b).exists()), None)
     if not browser:

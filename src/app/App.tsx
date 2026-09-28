@@ -63,7 +63,7 @@ export default function App() {
         <section className="page" key={active}>
           <ContentShell
             title={route.name}
-            desc={route.desc}
+            desc={route.pageDesc}
             header={!isChat}
             scroll={!isChat && !isSettings && !isFiles}
             bodyClass={isSettings ? 'settings-body' : isFiles ? 'files-body' : undefined}
