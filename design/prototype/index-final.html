@@ -2278,7 +2278,7 @@ function showUnreachable() {
   wrap.innerHTML = '<div class="err-bar">'
     + '<svg class="eb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/></svg>'
     + '<div class="eb-body"><b>没能连上模型服务</b> · 这次调用超时，已自动重试 2 次。你那条消息没有丢，重试即可继续。'
-    + '<div class="err-detail">gateway · upstream_timeout · attempt 3/3 · 12.4s</div></div>'
+    + '<div class="err-detail">模型服务 · upstream_timeout · attempt 3/3 · 12.4s</div></div>'
     + '<div class="eb-actions"><button class="ghost-btn">重试</button><button class="ghost-btn">去设置页查配置</button></div>'
     + '</div>';
   chatMsgs.appendChild(wrap);

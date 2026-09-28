@@ -57,7 +57,7 @@ Hermes 的文件工具都相对 cwd。规定 agent 的 cwd 恒为知识空间根
 
 ### 5 · 一个 home 一个 agent，因此串行化
 
-Hermes 的硬约束：两个进程指向同一 home 会互相污染运行记忆。部署上因此**串行化**调用：Harness 复用同一个 home 与常驻 gateway，不做 per-task overlay。
+Hermes 的硬约束：两个进程指向同一 home 会互相污染运行记忆。部署上因此**串行化**调用：Harness 复用同一个 home 与常驻 **agent 运行时**，不做 per-task overlay。
 
 ### 6 · 规格书需要新增一节
 
