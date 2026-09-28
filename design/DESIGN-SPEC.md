@@ -1714,6 +1714,42 @@ shared/                   # 前后端共用：领域类型 / 演化事件形状 
 
 **接入协议**：`hermes acp`（ACP，JSON-RPC over stdio）。Home 在 `~/.hermes/`：`config.yaml`（非密钥设置）、`.env`（密钥）、`auth.json`（OAuth）、`skills/`、`memories/`、`state.db`。
 
+**ACP 协议面（2026-09-28 实测 · Hermes v0.21.5 · 探针 `scripts/acp-probe.mjs`）**
+
+两个坑都是**实测**出来的，官方文档里没有：
+
+| # | 事实 | 说明 |
+|---|---|---|
+| 1 | **帧格式 = 换行分隔的裸 JSON** | **不是** LSP 的 `Content-Length` 头。证据：`acp/connection.py` 的 `readline()` + `json.loads(line)`。第一版按 LSP 帧写，适配器直接报 `Error parsing JSON-RPC message` |
+| 2 | **必须等适配器就绪后再发** | 早于读循环写入的消息会被启动阶段吞掉 —— 表现极具迷惑性：`ACP client connected` 已打印，`initialize` 却永远不回。做法：监听 stderr 出现那句日志后再发包（+500ms） |
+
+`initialize` 的返回（原样摘录）：
+
+```json
+{
+  "protocolVersion": 1,
+  "agentInfo": { "name": "hermes-agent", "version": "0.21.5" },
+  "agentCapabilities": {
+    "loadSession": true,
+    "promptCapabilities": { "image": true },
+    "sessionCapabilities": { "fork": {}, "list": {}, "resume": {} }
+  },
+  "authMethods": [
+    { "id": "hermes-setup", "type": "terminal", "args": ["--setup"],
+      "name": "Configure Hermes provider" }
+  ]
+}
+```
+
+`session/new` 的形状：无 provider 时返回 `-32603`，且 **`error.data.details` 是字符串**（内含 "Run `hermes model` to pick one"）—— 与 multica 的测试 fixture 一致，可据此判 X2 鉴权型错误。
+
+**时延**：进程启动 → `initialize` 返回约 **3 秒**；`session/new` → 会话可用约 **15 秒**（含 MCP 发现与 agent 构建）。
+→ 直接印证 §9.4「冷启动耗时进入体验指标」，也说明 §6.3.1 的「AI 正在做」三段回显是**必需**而不是修饰。
+
+**环境开关**：`HERMES_ACP_SKIP_CONFIGURED_MCP=1` 可跳过启动期 MCP 发现（官方注释称省 2–5 秒）。
+
+> ⚠️ **要带进部署的一条**：Hermes 自带的 SQLite 3.49.1 命中 WAL-reset 损坏 bug，它自动降级为 `journal_mode=DELETE` 并打警告。设备上那份是 v0.15.2（更旧），**装好第一件事是跑 `hermes doctor`**。
+
 **进程拓扑**（v1.4 定案，ADR-0008）：**浏览器 → 本地宿主（Node，常驻）→ agent 运行时（宿主的子进程）**。宿主承载 Harness、持有 ACP 的 stdio、托管前端产物、建本地索引，且是**设备上唯一持有知识空间写权限的进程**。完整拓扑图见 §9.1.3。由此，ADR-0005 修订说的"演化记录由 Harness 写"不再只是约定——agent 连写权限都没有。
 
 **工具集白名单（安全硬约束，不开放给用户改）**
