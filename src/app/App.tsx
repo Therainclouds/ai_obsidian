@@ -19,9 +19,15 @@ function useHashRoute(): string {
   return hash;
 }
 
+const SPACES = [
+  { name: '我的空间', meta: '0 文件 · 0 知识点' },
+  { name: '工作', meta: '42 文件 · 18 知识点' },
+  { name: '读书笔记', meta: '18 文件 · 9 知识点' },
+];
+
 export default function App() {
   const [active, setActive] = useState<RouteKey>('chat');
-  const [space, setSpace] = useState('我的空间');
+  const [space, setSpace] = useState(SPACES[0].name);
   const [theme, toggleTheme] = useTheme();
   const hash = useHashRoute();
   const health = useHostHealth();
@@ -29,39 +35,48 @@ export default function App() {
   const route = ROUTES.find((r) => r.key === active)!;
   const Page = route.Component;
   const isKit = hash === 'kit';
+  // 聊天页是居中满屏的：无页头、自己管滚动（对齐原型 #page-chat）
+  const isChat = !isKit && active === 'chat';
 
   return (
-    <div className="flex h-full">
+    <div className="app">
       <Sidebar
         active={active}
         onNavigate={setActive}
+        spaces={SPACES}
         space={space}
         onSpaceChange={setSpace}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
-      <ContentShell
-        title={isKit ? '组件库' : route.name}
-        desc={isKit ? 'M1 产出 · hash #kit 直达，不属于一级入口' : route.desc}
-      >
-        {isKit ? <KitPage /> : <Page />}
-      </ContentShell>
 
-      {/* 全局层：AI 悬浮球 + 宿主连通指示 */}
-      <Orb currentPage={isKit ? '组件库' : route.name} />
+      <main className="content">
+        {/* key 变化触发 pageIn 重放，与原型一致的页面进入动效 */}
+        <section className="page" key={isKit ? 'kit' : active}>
+          <ContentShell
+            title={isKit ? '组件库' : route.name}
+            desc={isKit ? 'M1 产出 · hash #kit 直达，不属于一级入口' : route.desc}
+            header={!isChat}
+            scroll={!isChat}
+          >
+            {isKit ? <KitPage /> : <Page />}
+          </ContentShell>
+        </section>
 
-      <div
-        className="fixed bottom-6 left-6 font-mono text-[11px] text-ink-3"
-        title="本地宿主（agent/index.ts）的连通状态"
-      >
-        <span
-          aria-hidden="true"
-          className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
-            health ? 'bg-brand-mid' : 'bg-accent'
-          }`}
-        />
-        {health ? `宿主在线 · ${space}` : '宿主未连接'}
-      </div>
+        {/* 全局层：AI 悬浮球，不随页面切换（§1.3） */}
+        <Orb currentPage={isKit ? '组件库' : route.name} />
+      </main>
+
+      {/* 开发期可见的宿主连通指示。生产构建里不出现 —— 原型没有这个元素 */}
+      {import.meta.env.DEV && (
+        <div
+          className="composer-meta"
+          style={{ position: 'fixed', left: 16, bottom: 12, zIndex: 80 }}
+          title="本地宿主（agent/index.ts）的连通状态"
+        >
+          {health ? `host ok · ${space}` : 'host offline'}
+        </div>
+      )}
     </div>
   );
 }

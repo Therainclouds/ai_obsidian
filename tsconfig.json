@@ -11,7 +11,7 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["node"],
+    "types": ["node", "vite/client"],
     // 宿主由 Node 24 直接跑 TS（type stripping），因此 import 必须带 .ts 后缀
     "allowImportingTsExtensions": true
   },
