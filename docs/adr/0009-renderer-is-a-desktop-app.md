@@ -101,7 +101,16 @@ IPC 天生双向、天生有推送，**这两个需求不用等就满足了**。
 - **`gateway` 那条待定项没被解决**：宿主从"独立进程"变成"主进程"，候选反而更好分辨了（用户可见的那个词更可能是 agent 运行时），但仍需设计侧收口
 - **`docs/接口规范.md` §2** 整节（通道选型）要重写；§1 的架构图要改
 
+## 已实测（2026-09-28 · 官方 `electron-v44.4.5-linux-arm64.zip`）
+
+- **有官方 aarch64 预构建**：下载 **118.3 MB** → 解包 **287.3 MB**（`electron` 单文件可执行 **210.6 MB**）。不需要交叉编译。可裁到约 250 MB（`LICENSES.chromium.html` 19.2 MB、`locales/` 只留中英省 8 MB）
+- **glibc 底线 = `GLIBC_2.25`**（从 ELF 里提取的符号版本；其余随包二进制只要 2.17）。musl 绝无可能
+- **硬依赖库族**：GTK 3 · GLib · **X11 全套**（libX11/xcb/Xcomposite/Xdamage/Xfixes/Xrandr/Xcursor/xkbcommon）· NSS 4 件 · fontconfig/expat/cups/dbus/gbm/secret/notify/udev · GL/EGL/GLESv2
+- 完整清单在 `docs/M0-行动清单.md` §3.2
+
 ## 尚未定
 
-1. **打包与分发形态**：AppImage / deb / 直接放目录？专用设备上怎么安装、怎么开机自启（systemd user service / desktop autostart）。这属于部署，不在本 ADR 内。
-2. **Electron 版本与 glibc 底线**：取决于目标机发行版。**这是本 ADR 唯一新增的验证风险**，与内存实测同一批做。
+1. **打包与分发形态**：AppImage / deb / 直接放目录？专用设备上怎么安装、怎么开机自启。**一条实测约束**：在 Windows 上打不出 deb / AppImage（要 Linux 工具链 + dpkg + fakeroot），只能产出 linux-arm64 的**目录 / zip**。对专用设备而言"一个目录 + 自启"最省也最稳 → **倾向定案：目录 + systemd user service / desktop autostart，不做 deb/AppImage**（待确认）
+2. ~~**Electron 版本与 glibc 底线**~~ → **已实测**（见上）。原设想的那项验证风险消解了大半
+3. **⚠ 新增的真正风险：设备上有没有 X11 显示服务器。** 这是本文实测才暴露出来的一条——**ADR-0004 / 0008 / 0009 一直在算内存，没有任何一条问过"设备有没有图形栈"**。而 Electron 不是 framebuffer 程序，X11 那整族库是硬依赖；无头设备上它**直接不成立**（挂 `xvfb` 能启动但对我们没意义）。
+   **退路与它的代价**：若设备确无图形栈，**ADR-0008 的"宿主 + 局域网浏览器"反而是唯一活得下来的方案**——但宿主就得监听非 localhost，安全面要重估。**这是旧方案唯一比新方案强的情形**，也是本 ADR 的残余风险。**它必须在写任何渲染器代码之前核掉。**
