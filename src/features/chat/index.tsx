@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { IconArrowUp, IconAt, IconClose, IconPlus } from '../../components/icons';
 import {
   AGENT_DELTA,
+  AGENT_DONE,
   AGENT_ERROR,
   AGENT_STAGE,
   AGENT_STAGE_LABEL,
   AGENT_STAGE_ORDER,
+  HOST_ERROR,
   type AgentStageKey,
 } from '../../../shared/events';
+import { hostAgentChat, hostAgentStatus } from '../../api/host';
 
 type Role = 'user' | 'assistant';
 interface Msg {
@@ -22,7 +25,7 @@ interface ErrShape {
 /** 「AI 正在做」的三段，正对应演化记录的 trigger（§6.3.1）。顺序与文案都由 shared 定 */
 const STAGES = AGENT_STAGE_ORDER.map((key) => ({ key, label: AGENT_STAGE_LABEL[key] }));
 
-/** 收到 SSE 的 stage 字段先校验，不信任网络来的字符串 */
+/** 宿主推来的 stage 字段先校验，不信任跨进程传来的字符串 */
 function isAgentStage(v: unknown): v is AgentStageKey {
   return typeof v === 'string' && (AGENT_STAGE_ORDER as readonly string[]).includes(v);
 }
@@ -84,13 +87,16 @@ export default function ChatPage() {
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    void fetch('/api/agent/status', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d: { initialized?: boolean }) => setAgentReady(Boolean(d.initialized)))
+    void hostAgentStatus()
+      .then((d) => setAgentReady(Boolean(d.initialized)))
       .catch(() => setAgentReady(false));
   }, []);
 
-  async function send(text: string) {
+  /**
+   * 发一轮。流是**推**来的（宿主分多次往回推），所以"结束"由事件决定，不由 await 决定 ——
+   * `hostAgentChat` 立即返回，三条终态事件（done / agent.error / host.error）各收一次尾。
+   */
+  function send(text: string) {
     const t = text.trim();
     if (!t || busy) return;
     lastRef.current = t;
@@ -101,61 +107,62 @@ export default function ChatPage() {
     setBusy(true);
     setStage('reading');
 
-    try {
-      const res = await fetch('/api/agent/chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text: t }),
-      });
-      if (!res.body) throw new Error('宿主没有返回流');
-
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = '';
-      let answer = '';
-
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-
-        let sep: number;
-        while ((sep = buf.indexOf('\n\n')) !== -1) {
-          const frame = buf.slice(0, sep);
-          buf = buf.slice(sep + 2);
-          const evLine = /^event:\s*(.+)$/m.exec(frame);
-          const dataLine = /^data:\s*(.+)$/m.exec(frame);
-          if (!evLine || !dataLine) continue;
-          const ev = evLine[1].trim();
-          const data = JSON.parse(dataLine[1]) as Record<string, unknown>;
-
-          if (ev === AGENT_STAGE) {
-            const s = data.stage;
-            if (isAgentStage(s)) setStage(s);
-          }
-          else if (ev === AGENT_DELTA) {
-            answer += String(data.text ?? '');
-            setMsgs((m) => {
-              const next = [...m];
-              const last = next[next.length - 1];
-              if (last && last.role === 'assistant') next[next.length - 1] = { role: 'assistant', text: answer };
-              else next.push({ role: 'assistant', text: answer });
-              return next;
-            });
-          } else if (ev === AGENT_ERROR) {
-            setErr({
-              headline: String(data.message ?? '未知错误'),
-              detail: data.code !== null && data.code !== undefined ? `acp · code ${data.code}` : 'acp',
-            });
-          }
-        }
-      }
-    } catch (e) {
-      setErr({ headline: (e as Error).message, detail: 'host' });
-    } finally {
+    let answer = '';
+    const finish = () => {
       setStage(null);
       setBusy(false);
       taRef.current?.focus();
+    };
+
+    try {
+      hostAgentChat(t, (event, data) => {
+        const d = data as Record<string, unknown>;
+
+        if (event === AGENT_STAGE) {
+          if (isAgentStage(d.stage)) setStage(d.stage);
+          return;
+        }
+
+        if (event === AGENT_DELTA) {
+          answer += String(d.text ?? '');
+          setMsgs((m) => {
+            const next = [...m];
+            const last = next[next.length - 1];
+            if (last && last.role === 'assistant') {
+              next[next.length - 1] = { role: 'assistant', text: answer };
+            } else {
+              next.push({ role: 'assistant', text: answer });
+            }
+            return next;
+          });
+          return;
+        }
+
+        if (event === AGENT_DONE) {
+          finish();
+          return;
+        }
+
+        if (event === AGENT_ERROR) {
+          setErr({
+            headline: String(d.message ?? '未知错误'),
+            detail:
+              d.code !== null && d.code !== undefined ? `acp · code ${d.code}` : 'acp',
+          });
+          finish();
+          return;
+        }
+
+        if (event === HOST_ERROR) {
+          // 通道自己报的错：请求压根没走到 agent（X5 本地型，§6.3.3）
+          setErr({ headline: String(d.message ?? '宿主没有响应'), detail: 'host' });
+          finish();
+        }
+      });
+    } catch (e) {
+      // 同步抛出的那类：不在桌面壳里、网桥没挂上
+      setErr({ headline: (e as Error).message, detail: 'host' });
+      finish();
     }
   }
 

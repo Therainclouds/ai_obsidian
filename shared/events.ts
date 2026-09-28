@@ -13,6 +13,16 @@ export const AGENT_DELTA = 'agent.delta' as const;
 export const AGENT_ERROR = 'agent.error' as const;
 export const AGENT_DONE = 'agent.done' as const;
 
+/**
+ * **通道自己报的错**，与 `agent.error` 分开：
+ * 后者是 agent 运行时/云端那一段失败了；前者是"这个请求根本没走到 agent"——
+ * 方法名不在白名单里、主进程抛了、壳没连上。
+ *
+ * 分开的理由和"来源关系 vs 关联不得合并计数"是同一条：**两种失败该给用户的出口不同**
+ * （前者重试，后者是产品装坏了，§6.3.3 的 X5 本地型）。
+ */
+export const HOST_ERROR = 'host.error' as const;
+
 /** 演化与四个 Hook 的产物 */
 export const EVOLUTION_RECORDED = 'evolution.recorded' as const;
 export const MATERIAL_COLLECTED = 'material.collected' as const;

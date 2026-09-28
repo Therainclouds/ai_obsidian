@@ -10,17 +10,8 @@ import {
   AGENT_STAGE_LABEL,
   type AgentStageKey,
 } from '../../shared/events.ts';
+import type { AgentStatus } from '../../shared/types.ts';
 import { AcpClient, hermesAvailable, resolveHermes, type InitializeResult } from '../acp-client.ts';
-
-export interface AgentStatus {
-  installed: boolean;
-  resolved: { py: string; cli: string; home: string };
-  initialized: boolean;
-  agentInfo: InitializeResult['agentInfo'] | null;
-  capabilities: InitializeResult['agentCapabilities'] | null;
-  hasSession: boolean;
-  error: string | null;
-}
 
 let client: AcpClient | null = null;
 let initResult: InitializeResult | null = null;
@@ -94,4 +85,17 @@ export async function runChat(text: string, sink: ChatSink): Promise<void> {
 
 export function noteError(message: string): void {
   agentError = message;
+}
+
+/**
+ * 宿主退出时收尾（ADR-0008 §4：宿主退出它就该退出）。
+ *
+ * stdio 子进程在父进程消失时通常也会被回收，但**不能靠这个**：
+ * 目标是避免"一个 home 两个 agent"（ADR-0002 §5），
+ * 而"通常会被回收"这件事在异常退出、二次启动、被 kill -9 的时序里并不成立。
+ */
+export function disposeAgent(): void {
+  client?.stop();
+  client = null;
+  sessionId = null;
 }

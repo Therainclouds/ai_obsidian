@@ -3,12 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "个人 AI 知识系统 · M0 骨架（设计基准：design/DESIGN-SPEC.md v1.4）",
+  "description": "个人 AI 知识系统 · 桌面应用（设计基准：design/DESIGN-SPEC.md v1.5 / ADR-0009）",
+  "main": "electron/main.ts",
   "scripts": {
     "dev": "vite",
+    "app": "electron . --dev",
     "build": "tsc --noEmit && vite build",
-    "host": "node agent/index.ts",
-    "start": "npm run build && npm run host",
+    "start": "npm run build && electron .",
+    "selftest": "npm run build && electron . --selftest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

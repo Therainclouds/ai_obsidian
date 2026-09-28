@@ -15,5 +15,5 @@
     // 宿主由 Node 24 直接跑 TS（type stripping），因此 import 必须带 .ts 后缀
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "agent", "shared", "vite.config.ts", "tailwind.config.js"]
+  "include": ["src", "agent", "electron", "shared", "vite.config.ts", "tailwind.config.js"]
 }
