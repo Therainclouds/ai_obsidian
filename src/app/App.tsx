@@ -5,12 +5,11 @@ import { ROUTES } from './routes';
 import { useTheme } from '../lib/useTheme';
 import { useHostHealth } from '../lib/useHostHealth';
 import Orb from '../features/assistant/Orb';
-import KitPage from '../features/kit';
 import type { RouteKey } from '../../shared/types';
 
 const isRouteKey = (v: string): v is RouteKey => ROUTES.some((r) => r.key === v);
 
-/** hash 直达：#chat / #files / #graph / #summary / #settings / #kit。便于深链与验收。 */
+/** hash 直达：#chat / #files / #graph / #summary / #settings。便于深链与验收。 */
 function useHash(): string {
   const [hash, setHash] = useState(() => window.location.hash.replace(/^#/, ''));
   useEffect(() => {
@@ -33,7 +32,6 @@ export default function App() {
   const hash = useHash();
   const health = useHostHealth();
 
-  const isKit = hash === 'kit';
   const active: RouteKey = isRouteKey(hash) ? hash : 'chat';
   const navigate = (key: RouteKey) => {
     window.location.hash = key;
@@ -42,9 +40,9 @@ export default function App() {
   const route = ROUTES.find((r) => r.key === active)!;
   const Page = route.Component;
   // 聊天页是居中满屏的：无页头、自己管滚动（对齐原型 #page-chat）
-  const isChat = !isKit && active === 'chat';
+  const isChat = active === 'chat';
   // 设置页有页头，但页身是左右分栏、自己管滚动（对齐原型 #page-settings）
-  const isSettings = !isKit && active === 'settings';
+  const isSettings = active === 'settings';
 
   return (
     <div className="app">
@@ -60,20 +58,20 @@ export default function App() {
 
       <main className="content">
         {/* key 变化触发 pageIn 重放，与原型一致的页面进入动效 */}
-        <section className="page" key={isKit ? 'kit' : active}>
+        <section className="page" key={active}>
           <ContentShell
-            title={isKit ? '组件库' : route.name}
-            desc={isKit ? 'M1 产出 · hash #kit 直达，不属于一级入口' : route.desc}
+            title={route.name}
+            desc={route.desc}
             header={!isChat}
             scroll={!isChat && !isSettings}
             bodyClass={isSettings ? 'settings-body' : undefined}
           >
-            {isKit ? <KitPage /> : <Page />}
+            <Page />
           </ContentShell>
         </section>
 
         {/* 全局层：AI 悬浮球，不随页面切换（§1.3） */}
-        <Orb currentPage={isKit ? '组件库' : route.name} />
+        <Orb currentPage={route.name} />
       </main>
 
       {/* 开发期可见的宿主连通指示。生产构建里不出现 —— 原型没有这个元素 */}

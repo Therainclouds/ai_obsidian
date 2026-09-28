@@ -1633,9 +1633,10 @@ src/                      # 浏览器：渲染器，产物是静态文件
 │  ├─ App.tsx             # 骨架：Sidebar + Content
 │  └─ routes.tsx
 ├─ components/
-│  ├─ layout/             # Sidebar, NavItem, PageHeader, ContentShell
-│  ├─ ui/                 # shadcn 基座：Button, Input, Chip, Switch, Segmented
+│  ├─ layout/             # Sidebar, NavItem, ContentShell, SpaceSwitch
+│  ├─ icons.tsx           # 图标：逐条抄自原型的 markup
 │  └─ fx/                 # NumberTicker, AnimatedBeam, Spotlight, BorderBeam, TypingAnimation
+│                         # ⚠ 不要再建 components/ui/ —— 见下方「组件基座在 CSS 里」
 ├─ features/
 │  ├─ chat/               # 模块 ①
 │  ├─ files/              # 模块 ②
@@ -1660,6 +1661,18 @@ agent/                    # 本地宿主进程（Node）—— v1.4 从 src/ 提
 
 shared/                   # 前后端共用：领域类型 / 演化事件形状 / 错误码
 ```
+
+#### 组件基座在 CSS 里，不在 `components/ui/`（2026-09-28 定）
+
+原先打算照 shadcn 那套在 `src/components/ui/` 建一层 React 组件（Button / Chip / Input / Switch / Segmented / Panel）。**这条路已废弃，那批组件已删除。** 原因是一次实际事故：
+
+把它们用 Tailwind 工具类「翻译」原型，等于把原型里几百个数值人工折算一遍——**必然走形**。事实是确实走形了：侧栏没有选中态竖条、图标是文本字形、聊天页变成占位卡片，用户一眼就看出"跟我们之前搭的 demo 完全是两回事"。
+
+**现行办法**：原型的 CSS **逐值原样移植**成组件类（`src/styles/globals.css` · `src/styles/settings.css`），JSX 直接用同一套类名——`.nav-item` · `.p-head` · `.ghost-btn` · `.primary-btn` · `.chip` · `.role-card` · `.composer-box` …… Tailwind 工具类只用于一次性的局部排布。
+
+**为什么不再建 `components/ui/`**：原型本身就是**可点击的组件库**——所有组件、所有状态、所有尺寸都在里面，而且是视觉唯一基准。再维护一层 React 包装，就多出**第二套并行样式系统**，而"两套东西慢慢不同步"正是上面那次事故的成因。少一套就少一处漂移源。
+
+**代价（明说）**：组件没有 props 层的类型约束，靠类名约定；跨页复用时要自己保证类名一致。用一条纪律换掉一层抽象，这笔账在"视觉必须逐值对齐原型"的项目里划得来。
 
 ### 9.4 实现顺序（里程碑）
 
