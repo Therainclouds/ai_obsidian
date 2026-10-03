@@ -17,6 +17,7 @@ import type {
   ConversationMessage,
   EvolutionRecord,
   Folder,
+  Iso,
   KnowledgePoint,
   ListAssociationRequest,
   ListKnowledgeRequest,
@@ -50,6 +51,9 @@ function todo(what: string): never {
 
 /** 配额。专用设备上这是真实存在的边界；M0 阶段先给一个定值 */
 const QUOTA_BYTES = 10 * 1024 * 1024 * 1024;
+
+/** 还没说过话的对话。第一句用户话进来时被它替换掉（见 `appendMessage`） */
+const NEW_CONVERSATION_TITLE = '新对话';
 
 export class MemoryStore {
   private spaces: Space[];
@@ -613,13 +617,43 @@ export class MemoryStore {
   createConversation(title?: string): Conversation {
     const conv: Conversation = {
       id: `cv-${Date.now().toString(36)}`,
-      title: title?.trim() || '新对话',
+      title: title?.trim() || NEW_CONVERSATION_TITLE,
       updatedAt: new Date().toISOString(),
       messageCount: 0,
     };
     this.conversations.unshift(conv);
     this.messages[conv.id] = [];
     return { ...conv };
+  }
+
+  /**
+   * 往对话历史里追加一条。
+   *
+   * **只有宿主会调它** —— 白名单里没有对应的方法，渲染器调不到。
+   * 这一点是刻意的：ADR-0008 边界 2 说宿主是唯一写入者，若渲染器也能写历史，
+   * 那它的本地副本与真实历史就可以分叉，而"分叉之后谁对"没有答案。
+   *
+   * **标题自动取第一句用户话**：产品自己存的这份历史，用户不该先给对话起名再说话。
+   * 只在"新对话 + 第一条是用户话"时取，之后不覆盖。
+   */
+  appendMessage(
+    conversationId: string,
+    msg: Omit<ConversationMessage, 'at'> & { at?: Iso },
+  ): ConversationMessage {
+    const conv = this.conversations.find((c) => c.id === conversationId);
+    if (!conv) throw new StoreError('找不到这段对话');
+
+    const full: ConversationMessage = { ...msg, at: msg.at ?? new Date().toISOString() };
+    const list = this.messages[conversationId] ?? [];
+    list.push(full);
+    this.messages[conversationId] = list;
+    conv.messageCount = list.length;
+    conv.updatedAt = full.at;
+
+    if (conv.title === NEW_CONVERSATION_TITLE && msg.role === 'user' && list.length === 1) {
+      conv.title = msg.text.trim().slice(0, 24) || NEW_CONVERSATION_TITLE;
+    }
+    return { ...full };
   }
 
   removeConversation(id: string): void {

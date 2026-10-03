@@ -21,6 +21,10 @@ import {
   CH_ASSOCIATION_CONFIRM,
   CH_ASSOCIATION_DENY,
   CH_ASSOCIATION_LIST,
+  CH_CONVERSATION_CREATE,
+  CH_CONVERSATION_GET,
+  CH_CONVERSATION_LIST,
+  CH_CONVERSATION_REMOVE,
   CH_EVOLUTION_LIST,
   CH_FOLDER_CREATE,
   CH_FOLDER_LIST,
@@ -117,18 +121,41 @@ INVOKE[CH_AGENT_STATUS] = (): AgentStatus => getStatus();
  * 用户那条消息留在对话里、草稿不清空、输入框不锁，出口是内联重试。
  */
 STREAM[CH_AGENT_CHAT] = async (payload, emit): Promise<void> => {
-  const text = (payload as { text?: string } | null)?.text ?? '';
+  const p = (payload ?? {}) as { text?: string; conversationId?: string };
+  const text = p.text ?? '';
   if (!text.trim()) throw new Error('空消息');
 
+  // 用户在说话之前先建好对话，宿主才知道往哪写（渲染器调 `conversation.create`）
+  const convId = typeof p.conversationId === 'string' ? p.conversationId : null;
+
+  /**
+   * ★ **先把用户这条写进历史，再去跑 agent**（§6.3.4 失败不毁内容）。
+   *
+   * 顺序不能反：请求失败时，用户那句话**必须已经留在对话里** ——
+   * 否则用户会看到自己刚说的话消失了，而界面上的"重试"按钮指向一段不存在的话。
+   *
+   * 反过来，**助手那条只在成功后写**。半截回答不落历史：它是草稿，
+   * 不是这次对话发生过的事（§6.3.4 的另一半）。
+   */
+  if (convId) store.appendMessage(convId, { role: 'user', text });
+
+  let answer = '';
   try {
     await runChat(text, {
       onStage: (stage, label) => emit(AGENT_STAGE, { stage, label }),
-      onDelta: (delta) => emit(AGENT_DELTA, { text: delta }),
+      onDelta: (delta) => {
+        answer += delta;
+        emit(AGENT_DELTA, { text: delta });
+      },
     });
-    emit(AGENT_DONE, { ok: true });
+    if (convId && answer.trim()) {
+      store.appendMessage(convId, { role: 'assistant', text: answer });
+    }
+    emit(AGENT_DONE, { ok: true, conversationId: convId });
   } catch (e) {
     const err = e as Error & { code?: number };
     noteError(err.message);
+    // **用户那条已经在历史里了**，所以这次失败不会让对话少一句
     emit(AGENT_ERROR, { code: err.code ?? null, message: err.message });
   }
 };
@@ -247,6 +274,25 @@ INVOKE[CH_EVOLUTION_LIST] = () => store.listEvolutions();
 
 INVOKE[CH_STATS_SUMMARY] = () => store.statsSummary();
 
+/* ---------- conversation：**对话历史**（D38） ---------- */
+
+/**
+ * **产品自己存的对话历史**，不是 agent 运行时的**会话**（`state.db`，产品不读它）。
+ *
+ * ⚠ **没有 `append`** —— 消息由 `agent.chat` 在处理时由宿主写（见那一段的注释）。
+ * 白名单里故意不放"追加消息"：渲染器若能自己写历史，它的本地副本与真实历史就能分叉，
+ * 而"分叉之后谁对"没有答案（ADR-0008 边界 2：宿主是唯一写入者）。
+ */
+INVOKE[CH_CONVERSATION_LIST] = () => store.listConversations();
+INVOKE[CH_CONVERSATION_GET] = (p) => store.getConversation(str(p, 'id', CH_CONVERSATION_GET));
+INVOKE[CH_CONVERSATION_CREATE] = (p) => {
+  const r = req<{ title?: unknown }>(p, CH_CONVERSATION_CREATE);
+  return store.createConversation(typeof r.title === 'string' ? r.title : undefined);
+};
+INVOKE[CH_CONVERSATION_REMOVE] = (p) => {
+  store.removeConversation(str(p, 'id', CH_CONVERSATION_REMOVE));
+};
+
 /* ---------- review：周期回顾（D43） ---------- */
 
 /**
@@ -311,6 +357,11 @@ const IMPLEMENTED = new Set<string>([
   CH_EVOLUTION_LIST,
   // stats
   CH_STATS_SUMMARY,
+  // conversation（**没有 append**，见上面那一段）
+  CH_CONVERSATION_LIST,
+  CH_CONVERSATION_GET,
+  CH_CONVERSATION_CREATE,
+  CH_CONVERSATION_REMOVE,
   // review
   CH_REVIEW_GET,
 ]);

@@ -10,13 +10,17 @@ import {
   HOST_ERROR,
   type AgentStageKey,
 } from '../../../shared/events';
-import { agentChat, agentStatus } from '../../api/host';
+import {
+  agentChat,
+  agentStatus,
+  createConversation,
+  getConversation,
+  listConversations,
+  statsSummary,
+} from '../../api/host';
+import { useHost } from '../../lib/useHost';
+import type { Conversation, ConversationMessage, StatsSummary } from '../../../shared/types';
 
-type Role = 'user' | 'assistant';
-interface Msg {
-  role: Role;
-  text: string;
-}
 interface ErrShape {
   headline: string;
   detail: string;
@@ -70,21 +74,49 @@ function Greeting() {
 /**
  * 模块 ① · 聊天（AI 主界面）
  *
+ * **对话历史是真的**（D38）：消息由**宿主**写进对话历史，页面只读它。
+ * 页面**不自己 append** —— 白名单里没有那个方法。这一条是刻意的：
+ * 若渲染器也能写历史，它的本地副本与真实历史就能分叉，而"分叉之后谁对"没有答案。
+ *
  * 走 DESIGN-SPEC §6.3 的三态规矩，而且是**真落地**：
  *  · 「AI 正在做」是一等状态（§6.3.1）—— 三段阶段回显
- *  · 失败不毁内容（§6.3.4）—— 用户那条消息留在对话里、草稿不清空、
- *    输入框不锁，出口是内联重试；错误条对齐消息左边缘（.msg-err）
+ *  · 失败不毁内容（§6.3.4）—— 用户那条消息**在跑 agent 之前就已写进历史**，
+ *    所以失败时它一定还在（宿主那边保证）；草稿不清空、输入框不锁，出口是内联重试
+ *
+ * ⚠ **本轮没做的两处**（都需要新视觉，原型里没有，待设计确认）：
+ *  · **对话历史左栏**（D39）—— 定了"默认收起的左栏"，但没定**怎么展开**。
+ *    目标机是**触控**，没有 hover，所以"收起态与原型逐像素一致"这条**无法与
+ *    "用户能发现入口"同时成立**。这一处要设计裁决。
+ *  · **「依据」卡片**（D41）—— 原型占位回复里写着"正式版会给出可点开的依据卡片"，
+ *    也就是原型里没有它的样式，同样要设计。
+ * 两者都不影响本页现在能真跑：对话历史在写、在存、在显示。
  */
 export default function ChatPage() {
-  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [convId, setConvId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<AgentStageKey | null>(null);
   const [err, setErr] = useState<ErrShape | null>(null);
   const [agentReady, setAgentReady] = useState(false);
-  const [bubbleDismissed, setBubbleDismissed] = useState(false);
+  /** 这一轮**正在发**的那句话。宿主的副本要等结束后才读得到，所以先在本地说一次 */
+  const [inFlight, setInFlight] = useState<string | null>(null);
+  /** 正在流式回来的回答（半截，不落历史 —— 它是草稿，不是发生过的事） */
+  const [streamText, setStreamText] = useState('');
   const lastRef = useRef('');
   const taRef = useRef<HTMLTextAreaElement>(null);
+
+  const convsQ = useHost('conversations', listConversations, [] as Conversation[]);
+  const msgsQ = useHost(
+    `conversation:${convId ?? ''}`,
+    async () => (convId ? getConversation(convId) : ([] as ConversationMessage[])),
+    [] as ConversationMessage[],
+  );
+  const statsQ = useHost<StatsSummary | null>('stats', statsSummary, null);
+
+  // 首次进来落到**最近那段**对话上 —— 历史是要看的，不该默认空着
+  useEffect(() => {
+    if (convId === null && convsQ.data.length > 0) setConvId(convsQ.data[0].id);
+  }, [convId, convsQ.data]);
 
   useEffect(() => {
     void agentStatus()
@@ -92,69 +124,76 @@ export default function ChatPage() {
       .catch(() => setAgentReady(false));
   }, []);
 
+  const history = msgsQ.data;
+
   /**
-   * 发一轮。流是**推**来的（宿主分多次往回推），所以"结束"由事件决定，不由 await 决定 ——
-   * `hostAgentChat` 立即返回，三条终态事件（done / agent.error / host.error）各收一次尾。
+   * 发一轮。流是**推**来的（宿主分多次往回推），所以"结束"由事件决定，不由 await 决定。
+   *
+   * 必须**先有对话**再说话：宿主得有个门牌号才知道往哪写历史。
+   * 第一句话之前没有对话，就先建一个 —— 这一步在这里做而不是在宿主里，
+   * 是因为"要不要新开一段"是**用户的意图**，不该由宿主替他决定。
    */
-  function send(text: string) {
+  async function send(text: string) {
     const t = text.trim();
     if (!t || busy) return;
-    lastRef.current = t;
 
-    setMsgs((m) => [...m, { role: 'user', text: t }]); // ① 先入列，之后绝不撤回
-    setDraft(''); // ② 草稿清空只因为已发出，不因失败而丢
+    let target = convId;
+    if (!target) {
+      try {
+        const conv = await createConversation();
+        target = conv.id;
+        setConvId(conv.id);
+        convsQ.reload();
+      } catch (e) {
+        setErr({ headline: (e as Error).message, detail: 'host' });
+        return;
+      }
+    }
+
+    lastRef.current = t;
+    setInFlight(t);
+    setStreamText('');
+    setDraft(''); // 草稿清空只因为已发出，不因失败而丢
     setErr(null);
     setBusy(true);
     setStage('reading');
 
-    let answer = '';
     const finish = () => {
       setStage(null);
       setBusy(false);
+      setInFlight(null);
+      setStreamText('');
+      // **以宿主为准**重新读一遍：它才是历史的作者，本地那份只是过程中的临时显示
+      msgsQ.reload();
+      convsQ.reload();
       taRef.current?.focus();
     };
 
     try {
-      agentChat(t, (event, data) => {
+      agentChat(t, target, (event, data) => {
         const d = data as Record<string, unknown>;
 
         if (event === AGENT_STAGE) {
           if (isAgentStage(d.stage)) setStage(d.stage);
           return;
         }
-
         if (event === AGENT_DELTA) {
-          answer += String(d.text ?? '');
-          setMsgs((m) => {
-            const next = [...m];
-            const last = next[next.length - 1];
-            if (last && last.role === 'assistant') {
-              next[next.length - 1] = { role: 'assistant', text: answer };
-            } else {
-              next.push({ role: 'assistant', text: answer });
-            }
-            return next;
-          });
+          setStreamText((s) => s + String(d.text ?? ''));
           return;
         }
-
         if (event === AGENT_DONE) {
           finish();
           return;
         }
-
         if (event === AGENT_ERROR) {
           setErr({
             headline: String(d.message ?? '未知错误'),
-            detail:
-              d.code !== null && d.code !== undefined ? `acp · code ${d.code}` : 'acp',
+            detail: d.code !== null && d.code !== undefined ? `acp · code ${d.code}` : 'acp',
           });
           finish();
           return;
         }
-
         if (event === HOST_ERROR) {
-          // 通道自己报的错：请求压根没走到 agent（X5 本地型，§6.3.3）
           setErr({ headline: String(d.message ?? '宿主没有响应'), detail: 'host' });
           finish();
         }
@@ -166,7 +205,7 @@ export default function ChatPage() {
     }
   }
 
-  const empty = msgs.length === 0;
+  const empty = history.length === 0 && inFlight === null;
 
   return (
     <>
@@ -180,21 +219,44 @@ export default function ChatPage() {
             </div>
             <div className="chat-status">
               <span className="pulse" />
-              {agentReady ? 'AI 就绪 · 已索引 0 个文件 · 0 条关联' : 'AI 未连接 · 宿主未就绪'}
+              {agentReady
+                ? `AI 就绪 · 已索引 ${statsQ.data?.materialCount ?? 0} 个文件 · ${
+                    statsQ.data?.establishedAssociationCount ?? 0
+                  } 条关联`
+                : 'AI 未连接 · 宿主未就绪'}
             </div>
             <Greeting />
             <p className="chat-hint">我会读取你存入的文件和对话，帮你把散落的信息连成知识。</p>
           </div>
         ) : (
-          <div className="chat-msgs">
-            {msgs.map((m, i) => (
-              <div key={i} className={m.role === 'user' ? 'msg user' : 'msg ai'}>
+          <div className="chat-msgs show">
+            {history.map((m, i) => (
+              <div key={`h${i}`} className={m.role === 'user' ? 'msg user' : 'msg ai'}>
                 <span className="m-avatar" aria-hidden="true">
                   {m.role === 'user' ? '我' : 'AI'}
                 </span>
                 <div className="m-bubble">{m.text}</div>
               </div>
             ))}
+
+            {/* 本轮发出去的那句：宿主已经写了，但它要等这轮结束才读得到，先在本地说一次 */}
+            {inFlight !== null && (
+              <div className="msg user">
+                <span className="m-avatar" aria-hidden="true">
+                  我
+                </span>
+                <div className="m-bubble">{inFlight}</div>
+              </div>
+            )}
+
+            {streamText && (
+              <div className="msg ai">
+                <span className="m-avatar" aria-hidden="true">
+                  AI
+                </span>
+                <div className="m-bubble">{streamText}</div>
+              </div>
+            )}
 
             {/* 「AI 正在做」：三段阶段回显，不是转圈（§6.3.1） */}
             {stage && (

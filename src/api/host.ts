@@ -88,9 +88,11 @@ export const agentReload = (): Promise<void> => ask(CH.CH_AGENT_RELOAD);
  */
 export function agentChat(
   text: string,
+  /** 写进哪段**对话历史**（D38）。**宿主是唯一写入者** —— 这里只报门牌号 */
+  conversationId: string | null,
   onEvent: (event: string, data: unknown) => void,
 ): () => void {
-  return bridge().stream(CH.CH_AGENT_CHAT, { text }, onEvent);
+  return bridge().stream(CH.CH_AGENT_CHAT, { text, conversationId }, onEvent);
 }
 
 /**

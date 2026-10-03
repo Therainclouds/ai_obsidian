@@ -198,6 +198,69 @@ const PROBE = `(async () => {
   const c3 = await H.invoke('review.get', { span: 'day' });
   add('内容变了缓存失效（D43）', c3.generatedAt !== c2.generatedAt);
 
+  /* ---------- S3 · 聊天页 ---------- */
+  const convs0 = await H.invoke('conversation.list');
+  add('对话历史列表能读（D38）', Array.isArray(convs0), convs0.length + ' 段');
+
+  const conv = convs0[0];
+  const msgs0 = await H.invoke('conversation.get', { id: conv.id });
+  add('对话能取到消息', Array.isArray(msgs0) && msgs0.length === conv.messageCount,
+    msgs0.length + ' / ' + conv.messageCount);
+  add('消息带角色与时刻',
+    msgs0.every((m) => (m.role === 'user' || m.role === 'assistant') && !!m.at));
+  // 「依据」是数据里的东西（D41 要的那张卡片就靠它）
+  add('助手消息带「依据」（D41 的数据面）',
+    msgs0.some((m) => m.role === 'assistant' && Array.isArray(m.basis) && m.basis.length > 0));
+
+  // ★ 宿主是唯一写入者（ADR-0008 边界 2）：渲染器**没有**写历史的办法
+  add('渲染器不能自己写对话历史',
+    (await why(() => H.invoke('conversation.append', { id: conv.id }), '未知方法')) === '');
+
+  const fresh = await H.invoke('conversation.create', {});
+  add('新建对话的标题是占位「新对话」', fresh.title === '新对话', fresh.title);
+  add('新建后列表变长',
+    (await H.invoke('conversation.list')).length === convs0.length + 1);
+
+  /*
+   * ★★ 最要紧的一条：**失败不毁内容，且顺序不能反**（§6.3.4）。
+   *
+   * 宿主在**跑 agent 之前**就把用户那条写进历史 —— 所以无论这一轮成功还是失败、
+   * 甚至 agent 根本不在，用户那句话都必须已经躺在历史里。
+   * 本机正好是最严的那种情形：agent 多半跑不起来，正是这条断言该被验的时候。
+   */
+  const probe = '自检用的那句话，不该丢';
+  await new Promise((resolve) => {
+    H.stream('agent.chat', { text: probe, conversationId: fresh.id }, (event) => {
+      if (event === 'agent.done' || event === 'agent.error' || event === 'host.error') resolve(null);
+    });
+  });
+  const after = await H.invoke('conversation.get', { id: fresh.id });
+  add('发出去之后用户那条一定在历史里',
+    after.some((m) => m.role === 'user' && m.text === probe), after.length + ' 条');
+
+  /*
+   * 助手那条有没有写进去，取决于 agent 到底能不能跑 —— **这条不是断言"一定成功"**，
+   * 而是把结果如实报出来：能跑就报出行首几十个字（等于端到端验了一次模型往返），
+   * 不能跑就报"没跑起来"。绿色不代表模型可用，红色也不代表代码坏了。
+   */
+  const reply = after.find((m) => m.role === 'assistant');
+  add(
+    '助手那条：agent 能跑就写、跑不了就不写（§6.3.4 的另一半）',
+    true,
+    // ⚠ 这里不能用模板字符串：整段探针本身就在一个模板字符串里，反引号会把外层套破。
+    // 用拼接 —— 美元花括号在字符串里也照样会被外层插值。
+    reply
+      ? '已写 ' + reply.text.length + ' 字 · ' + reply.text.slice(0, 28) + '…'
+      : '这轮没产出回复，历史里只有用户那条',
+  );
+  add('标题自动取第一句用户话（用户不必先给对话起名）',
+    (await H.invoke('conversation.list')).find((c) => c.id === fresh.id).title === probe.slice(0, 24));
+
+  await H.invoke('conversation.remove', { id: fresh.id });
+  add('删除对话', (await H.invoke('conversation.list')).length === convs0.length);
+  add('删掉的对话取不到了',
+    (await why(() => H.invoke('conversation.get', { id: fresh.id }), '找不到')) === '');
+
   return out;
 })()`;
 
