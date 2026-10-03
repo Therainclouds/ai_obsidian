@@ -34,6 +34,11 @@ import type {
   Tag,
 } from '../../shared/types.ts';
 import type { Seed, SeedKnowledge, SeedMaterial } from '../mock/seed.ts';
+import {
+  generateReview,
+  reviewCacheKey,
+  type ReviewInput,
+} from '../services/review.service.ts';
 
 /** 写操作失败时抛它。**消息要能直接给用户看**（§6.3.3 要过五型翻译，但原因得先准） */
 export class StoreError extends Error {}
@@ -56,6 +61,8 @@ export class MemoryStore {
   /** **被否认的那一对**：永久压制，不再被提议（D35）。键是两个 id 排序后拼起来 */
   private suppressed = new Set<string>();
   private evolutions: EvolutionRecord[];
+  /** 周期回顾的会话级缓存。键见 `reviewCacheKey` —— **它不是实体，随时可丢**（D43） */
+  private reviewCache = new Map<string, ReviewResponse>();
   private conversations: Conversation[];
   private messages: Record<string, ConversationMessage[]>;
   private model: ModelConfig;
@@ -545,13 +552,53 @@ export class MemoryStore {
   }
 
   /* ================================================================
-     本阶段之外：显式留空（S2 / S3 / S4 各自接手）
+     周期回顾（D43）
      ================================================================ */
 
-  reviewGet(_span: ReviewSpan): ReviewResponse {
-    // S2：打开时现生成 + 缓存（D43）。生成层是**云端往返**，要有完整三态
-    return todo('周期回顾的生成');
+  /**
+   * **打开时现生成 + 缓存**，缓存**不等于落盘为实体**（D43）。
+   *
+   * 缓存放在内存里、**会话级** —— 设备常驻、应用一开着就用；落盘缓存要额外处理失效
+   * 与清理，收益只是"重启后省一次生成"，D43 说留待实测再定。
+   *
+   * 键里带**内容指纹**，所以"该区间内的知识点集合变了"会自动落到新键上 ——
+   * 不需要在每次写操作里手写失效逻辑（也就不会漏）。
+   */
+  reviewGet(span: ReviewSpan): ReviewResponse {
+    const input: ReviewInput = {
+      span,
+      now: new Date(),
+      evolutions: this.evolutions,
+      // 回收站里的知识点不该出现在回顾里
+      knowledge: this.knowledge.filter((k) => k.deletedAt === null),
+      associations: this.associations,
+    };
+
+    const key = reviewCacheKey(input);
+    const hit = this.reviewCache.get(key);
+    if (hit) return structuredClone(hit);
+
+    const { entries, source } = generateReview(input);
+    const res: ReviewResponse = {
+      span,
+      generatedAt: new Date().toISOString(),
+      entries,
+      source,
+    };
+
+    // 有界：键会随"时段 × 桶 × 指纹"增长，长会话下不设上限会一直涨。
+    // 32 条足够覆盖四个档位来回切；超出就丢最旧的（FIFO），重生成一次很便宜
+    if (this.reviewCache.size >= 32) {
+      const oldest = this.reviewCache.keys().next().value;
+      if (oldest !== undefined) this.reviewCache.delete(oldest);
+    }
+    this.reviewCache.set(key, res);
+    return structuredClone(res);
   }
+
+  /* ================================================================
+     本阶段之外：显式留空（S3 / S4 各自接手）
+     ================================================================ */
 
   listConversations(): Conversation[] {
     return this.conversations.map((c) => ({ ...c }));

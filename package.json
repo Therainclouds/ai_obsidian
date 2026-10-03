@@ -15,6 +15,7 @@
     "selftest": "npm run build && electron . --selftest",
     "selftest:mock": "npm run build && electron . --selftest --mock",
     "shots": "npm run build && electron . --shots --mock",
+    "shots:empty": "npm run build && electron . --shots",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -144,6 +144,60 @@ const PROBE = `(async () => {
   await H.invoke('material.move', { ids: [first.id], folderId: first.folderId });
   add('清理回原状（空夹可以删）', (await fine(() => H.invoke('folder.remove', { id: created.id }))) === '');
 
+  /* ---------- S2 · 知识总结页 ---------- */
+  const stats2 = await H.invoke('stats.summary');
+  add('统计卡有相识天数与起始日', stats2.daysSince >= 1 && !!stats2.since,
+    stats2.daysSince + ' 天');
+  add('热度柱正好 14 格', Array.isArray(stats2.heat) && stats2.heat.length === 14);
+  add('热度是 0–1 的强度（配色留给视图）',
+    stats2.heat.every((c) => c.intensity >= 0 && c.intensity <= 1 && !!c.date));
+  add('TOP 6 不超过 6 条且降序',
+    stats2.topKnowledge.length <= 6 &&
+      stats2.topKnowledge.every((t, i, a) => i === 0 || a[i - 1].calls >= t.calls),
+    stats2.topKnowledge.length + ' 条');
+
+  const spans = ['day', 'week', 'month', 'year'];
+  const reviews = {};
+  for (const sp of spans) {
+    reviews[sp] = await H.invoke('review.get', { span: sp });
+  }
+  add('日/周/月/年 四档都能取', spans.every((sp) => Array.isArray(reviews[sp].entries)));
+  add('每档都有条目（夹具里各时段都走过演化）',
+    spans.every((sp) => reviews[sp].entries.length > 0),
+    spans.map((sp) => sp + ':' + reviews[sp].entries.length).join(' '));
+  // ⚠ 这条是 D43 那一半的可见标记：模型那一半还没接，必须如实说
+  add('回顾标明来源（本地数出 vs 模型写的）',
+    spans.every((sp) => reviews[sp].source === 'local'),
+    reviews['day'].source);
+  // 条目形状：视图不是知识点（ADR-0007）
+  const day0 = reviews['day'].entries[0];
+  add('回顾条目形状正确',
+    typeof day0.date === 'string' && typeof day0.title === 'string' &&
+      typeof day0.text === 'string' && Array.isArray(day0.topics) &&
+      typeof day0.todoCount === 'number');
+
+  // ★ 最要紧的一条：**取回顾不许产生新实体**（ADR-0007 / D30）
+  const before = await H.invoke('stats.summary');
+  for (const sp of spans) await H.invoke('review.get', { span: sp });
+  const afterReview = await H.invoke('stats.summary');
+  add('取回顾不产生新实体（ADR-0007）',
+    afterReview.knowledgeCount === before.knowledgeCount &&
+      afterReview.establishedAssociationCount === before.establishedAssociationCount &&
+      afterReview.materialCount === before.materialCount,
+    before.knowledgeCount + '→' + afterReview.knowledgeCount);
+
+  // 缓存命中：同一档连续两次，生成时刻不变
+  const c1 = await H.invoke('review.get', { span: 'day' });
+  const c2 = await H.invoke('review.get', { span: 'day' });
+  add('同一档重复取走缓存（D43）', c1.generatedAt === c2.generatedAt, c1.generatedAt);
+
+  // 缓存失效：改一条关联的状态 → 指纹变 → 重新生成
+  await new Promise((r) => setTimeout(r, 20));
+  const left = await H.invoke('association.list', { state: 'candidate' });
+  if (left.length > 0) await H.invoke('association.confirm', { id: left[0].id });
+  const c3 = await H.invoke('review.get', { span: 'day' });
+  add('内容变了缓存失效（D43）', c3.generatedAt !== c2.generatedAt);
+
   return out;
 })()`;
 

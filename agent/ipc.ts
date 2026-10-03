@@ -37,6 +37,7 @@ import {
   CH_MATERIAL_MOVE,
   CH_MATERIAL_REMOVE,
   CH_MATERIAL_RESTORE,
+  CH_REVIEW_GET,
   CH_SPACE_ACTIVATE,
   CH_SPACE_CREATE,
   CH_SPACE_LIST,
@@ -246,6 +247,21 @@ INVOKE[CH_EVOLUTION_LIST] = () => store.listEvolutions();
 
 INVOKE[CH_STATS_SUMMARY] = () => store.statsSummary();
 
+/* ---------- review：周期回顾（D43） ---------- */
+
+/**
+ * **打开时现生成 + 缓存**。响应里的 `source` 说明这段文字是谁写的 ——
+ * 生成层那一半还没接（见 `agent/services/review.service.ts` 末节），
+ * 所以现在只会是 `local`。界面必须把那件事标出来。
+ */
+INVOKE[CH_REVIEW_GET] = (p) => {
+  const span = req<{ span?: unknown }>(p, CH_REVIEW_GET).span;
+  if (span !== 'day' && span !== 'week' && span !== 'month' && span !== 'year') {
+    throw new Error(`${CH_REVIEW_GET}：时段必须是 day / week / month / year`);
+  }
+  return store.reviewGet(span);
+};
+
 /* ============================================================
    查询
    ============================================================ */
@@ -295,6 +311,8 @@ const IMPLEMENTED = new Set<string>([
   CH_EVOLUTION_LIST,
   // stats
   CH_STATS_SUMMARY,
+  // review
+  CH_REVIEW_GET,
 ]);
 
 /** 这个方法存在吗（白名单校验用；main.ts 在注册前自检） */

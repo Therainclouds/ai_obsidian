@@ -187,7 +187,9 @@ ldd ./electron | grep 'not found'   # 最直接
 - **存储层是接缝**：`agent/store/index.ts` 一行决定用哪个实现；`store/fs.ts`（真实落盘）来了之后 **`agent/ipc.ts` 一个字不改**
 
 **分期按页面切，不按层切**（每期结束那一个页面是真的）：
-**S1 文件管理 ✅** → S2 知识总结（`stats`+`review`）→ S3 聊天（`conversation`）→ S4 设置（`model`+`skill`+`agent.reload/arrange`+事件生产端）
+**S1 文件管理 ✅** → **S2 知识总结 ✅**（`stats` 已接；`review` 只接了一半，见下）→ S3 聊天（`conversation`）→ S4 设置（`model`+`skill`+`agent.reload/arrange`+事件生产端）
+
+**⚠ S2 留了一个明缺口**：`review.get` 按 D43 应由**生成层**写，现在只做了本地数事实那一半（`source: 'local'`，界面标注）。**不做另一半的理由**：要 agent 运行时 + 模型凭据，当前环境跑不起来 → **没法验收**。接的位置写在 `agent/services/review.service.ts` 末节，`ReviewResponse.source` 为它留好了。
 
 **验收一期三步**：`npm run selftest:mock`（功能）· `npm run shots`（长相）· `npm run start` 不带 `--mock`（**空态是另一套界面**）。
 

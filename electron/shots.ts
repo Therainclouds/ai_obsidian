@@ -40,10 +40,18 @@ interface Shot {
 /** 等页面把数据取回来再拍。夹具是本地的，很快；这里只是给 IPC 往返留余量 */
 const SETTLE_MS = 900;
 
+/**
+ * `suffix` 用来把两套截图分开存：带夹具的（空后缀）与**空态**的（`-empty`）。
+ *
+ * 为什么必须分开：空态**是另一套界面**，而"夹具下跑得通"证明不了它 ——
+ * 这正是本期踩过的坑（四个 bug 里没有一个会被自检抓到）。固定文件名会让后跑的那次
+ * 覆盖前一次，于是"两套都看过"变成"看过最后跑的那套"。
+ */
 export async function takeShots(
   win: BrowserWindow,
   outDir: string,
   shots: Shot[],
+  suffix = '',
 ): Promise<string[]> {
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
@@ -71,10 +79,10 @@ export async function takeShots(
     }
 
     const image = await win.webContents.capturePage();
-    const file = join(outDir, `${shot.label}.png`);
+    const file = join(outDir, `${shot.label}${suffix}.png`);
     writeFileSync(file, image.toPNG());
     written.push(file);
-    console.log(`[shots] ${shot.label} → ${file}`);
+    console.log(`[shots] ${shot.label}${suffix} → ${file}`);
   }
 
   return written;

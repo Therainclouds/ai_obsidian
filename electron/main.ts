@@ -22,7 +22,7 @@ import {
 } from '../shared/ipc.ts';
 import { channelCoverage, INVOKE, STREAM } from '../agent/ipc.ts';
 import { disposeAgent, getStatus } from '../agent/services/agent.service.ts';
-import { describeStore } from '../agent/store/index.ts';
+import { describeStore, isMock } from '../agent/store/index.ts';
 import { runSelfTest } from './selftest.ts';
 import { SHOT_LIST, takeShots } from './shots.ts';
 
@@ -86,7 +86,13 @@ function createWindow(): BrowserWindow {
     win.webContents.once('did-finish-load', () => {
       void (async () => {
         if (SELFTEST) await runSelfTest(win);
-        await takeShots(win, join(ROOT, 'design', 'app-shots'), SHOT_LIST);
+        // 空态存成 `-empty` 后缀 —— 两套必须能并存，否则后跑的会盖掉前一套
+        await takeShots(
+          win,
+          join(ROOT, 'design', 'app-shots'),
+          SHOT_LIST,
+          isMock ? '' : '-empty',
+        );
         app.quit();
       })();
     });
