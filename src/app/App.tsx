@@ -4,8 +4,10 @@ import ContentShell from '../components/layout/ContentShell';
 import { ROUTES } from './routes';
 import { useTheme } from '../lib/useTheme';
 import { useHostHealth } from '../lib/useHostHealth';
+import { useHost } from '../lib/useHost';
+import { activateSpace, listSpaces } from '../api/host';
 import Orb from '../features/assistant/Orb';
-import type { RouteKey } from '../../shared/types';
+import type { RouteKey, Space } from '../../shared/types';
 
 const isRouteKey = (v: string): v is RouteKey => ROUTES.some((r) => r.key === v);
 
@@ -20,17 +22,23 @@ function useHash(): string {
   return hash;
 }
 
-const SPACES = [
-  { name: '我的空间', meta: '0 文件 · 0 知识点' },
-  { name: '工作', meta: '0 文件 · 0 知识点' },
-  { name: '读书笔记', meta: '0 文件 · 0 知识点' },
-];
-
 export default function App() {
-  const [space, setSpace] = useState(SPACES[0].name);
   const [theme, toggleTheme] = useTheme();
   const hash = useHash();
   const health = useHostHealth();
+
+  // 知识空间来自宿主（ADR-0006）。**这里原来写死了三个假的** —— 那也是假数据，
+  // 而且它比页面里的更隐蔽：看上去像"产品还没有空间"这个正常状态。
+  const spacesQ = useHost('spaces', listSpaces, [] as Space[]);
+  const [spaceId, setSpaceId] = useState<string | null>(null);
+  const activeSpace =
+    spacesQ.data.find((s) => s.id === spaceId) ??
+    spacesQ.data.find((s) => s.active) ??
+    spacesQ.data[0];
+  const spaceOptions = spacesQ.data.map((s) => ({
+    name: s.name,
+    meta: `${s.materialCount} 素材 · ${s.knowledgeCount} 知识点`,
+  }));
 
   const active: RouteKey = isRouteKey(hash) ? hash : 'chat';
   const navigate = (key: RouteKey) => {
@@ -51,9 +59,16 @@ export default function App() {
       <Sidebar
         active={active}
         onNavigate={navigate}
-        spaces={SPACES}
-        space={space}
-        onSpaceChange={setSpace}
+        spaces={spaceOptions}
+        space={activeSpace?.name ?? '（没有知识空间）'}
+        onSpaceChange={(name) => {
+          const hit = spacesQ.data.find((s) => s.name === name);
+          if (!hit) return;
+          setSpaceId(hit.id);
+          // 切空间要不要重载 agent **仍未实测**（ADR-0006 待验证项）——
+          // 接口已经在了，行为等实测结果再补
+          void activateSpace(hit.id).then(spacesQ.reload);
+        }}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
@@ -93,9 +108,9 @@ export default function App() {
         <div
           className="composer-meta"
           style={{ position: 'fixed', left: 16, bottom: 12, zIndex: 80 }}
-          title="本地宿主（agent/index.ts）的连通状态"
+          title="本地宿主（Electron 主进程）的连通状态"
         >
-          {health ? `host ok · ${space}` : 'host offline'}
+          {health ? `host ok · ${activeSpace?.name ?? '—'}` : 'host offline'}
         </div>
       )}
     </div>

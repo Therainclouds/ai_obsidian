@@ -52,7 +52,13 @@ export interface Folder {
   name: string;
   /** 父文件夹。顶层为 `null` */
   parentId: Id | null;
-  /** 直接挂在本夹下的**文件素材**数。**不递归**（子夹的数各自算各自的） */
+  /**
+   * 这棵子树里的**文件素材**总数（**含子文件夹**）。
+   *
+   * 为什么是子树而不是直接子级：只数直接子级时，一个"里面只有子文件夹"的夹会显示 0，
+   * 界面上和空文件夹长得一模一样 —— 用户会以为东西丢了。（这是截图暴露出来的。）
+   * 推论：**不要把每个夹的数相加去求总数**，那会重复计数；总数看 `Space.materialCount`。
+   */
   materialCount: number;
 }
 
@@ -65,6 +71,15 @@ interface ContentBase {
   /** 非空即在回收站里 */
   deletedAt: Iso | null;
   favorite: boolean;
+  /**
+   * **已建立关联**的条数。列表视图要显示它，所以随实体一起下发（不叫 `linkCount` ——
+   * 「链接」是**关联**的 `_Avoid_` 词）。
+   *
+   * **只数已建立**：候选关联**不进图谱、不计入统计**（D35），这个数必须与那个口径一致，
+   * 否则界面上会出现一个"比图谱里多出来"的数。**候选另记 `candidateAssociationCount`，两者不相加。**
+   */
+  establishedAssociationCount: number;
+  candidateAssociationCount: number;
 }
 
 /** 素材。按**归属**分两个子类，二者只差"有没有文件夹"（ADR-0007）。 */
@@ -348,8 +363,15 @@ export interface HealthPayload {
   uptimeSec: number;
   /** 是否已建立会话（不是"装没装"——那是 agentStatus 的事） */
   agentConnected: boolean;
-  /** 当前知识空间。M0 只有一个占位值。 */
+  /** 当前知识空间的显示名 */
   space: string;
+  /**
+   * **当前数据是不是示例数据**（`--mock`）。
+   *
+   * 界面**必须据此标明**。理由：**假数据不可见就会被当成设计** —— 本项目已经吃过一次
+   * （原型里的示例结构差点被当作真实数据模型）。这个字段存在的唯一目的就是让它可见。
+   */
+  mock: boolean;
 }
 
 /**

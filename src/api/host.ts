@@ -48,9 +48,23 @@ function bridge(): NonNullable<Window['host']> {
   return h;
 }
 
+/**
+ * Electron 会给主进程抛的错套一层壳：`Error invoking remote method 'host:invoke': Error: 真正的消息`。
+ * 那层壳对用户没有意义，而**宿主的报错本来就是中文的、可以直接显示**（§6.3.3 再按五型翻译）。
+ * 所以在这里剥掉，让上层拿到的是干净的原因。
+ */
+function cleanHostError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  return raw.replace(/^Error invoking remote method '[^']*':\s*(Error:\s*)?/, '');
+}
+
 /** 一问一答。**内部用；业务代码请用下面带名字的那组** */
 function ask<T>(channel: string, payload?: unknown): Promise<T> {
-  return bridge().invoke<T>(channel, payload);
+  return bridge()
+    .invoke<T>(channel, payload)
+    .catch((e: unknown) => {
+      throw new Error(cleanHostError(e));
+    });
 }
 
 /* ============================================================

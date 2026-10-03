@@ -8,7 +8,14 @@ interface ContentShellProps {
   header?: boolean;
   /** false = 页面自己管布局与滚动（左右分栏 / 需要占满高度的页面用） */
   scroll?: boolean;
-  /** scroll=false 时用什么容器。默认 p-body-col；设置页用 settings-body（flex row + border-top） */
+  /**
+   * `scroll=false` 时**叠加**在 `.p-body` 上的页面类（设置页 `settings-body`、文件页 `files-body`）。
+   *
+   * ⚠ 它是**叠加**不是替换 —— 原型写的是 `#page-files .p-body{...}`，也就是说
+   * `.p-body` 一直在场，页面类只加"左右分栏 + 顶边框"这几条。
+   * 撑开高度的是 `.p-body{flex:1;min-height:0}`；把它换掉，页面就只剩内容的高度
+   * ——文件页的关联图被压成一小块、视图区冒滚动条，就是这么来的。
+   */
   bodyClass?: string;
   children: ReactNode;
 }
@@ -37,7 +44,8 @@ export default function ContentShell({
           <div className="p-scroll">{children}</div>
         </div>
       ) : (
-        <div className={bodyClass ?? 'p-body-col'}>{children}</div>
+        // 有页面类 → `.p-body` 打底 + 页面类叠加；没有 → 用 p-body-col（聊天页那种自管布局）
+        <div className={bodyClass ? `p-body ${bodyClass}` : 'p-body-col'}>{children}</div>
       )}
     </>
   );

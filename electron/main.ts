@@ -22,7 +22,9 @@ import {
 } from '../shared/ipc.ts';
 import { channelCoverage, INVOKE, STREAM } from '../agent/ipc.ts';
 import { disposeAgent, getStatus } from '../agent/services/agent.service.ts';
+import { describeStore } from '../agent/store/index.ts';
 import { runSelfTest } from './selftest.ts';
+import { SHOT_LIST, takeShots } from './shots.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(ROOT, 'dist');
@@ -39,6 +41,9 @@ const DEV_URL = DEV ? 'http://localhost:5173' : null;
 
 /** 冒烟自检：跑一遍然后退出。见 electron/selftest.ts —— 桌面壳的问题多是静默失败 */
 const SELFTEST = process.argv.includes('--selftest');
+
+/** 逐页截图到 `design/app-shots/`。与原型截图分开放，那边是**基准**，这边是**实现** */
+const SHOTS = process.argv.includes('--shots');
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -73,6 +78,17 @@ function createWindow(): BrowserWindow {
   if (SELFTEST) {
     win.webContents.once('did-finish-load', () => {
       void runSelfTest(win).then(() => app.quit());
+    });
+  }
+
+  // 截图模式：跑完自检（若也带了 --selftest）再逐页拍，然后退出
+  if (SHOTS) {
+    win.webContents.once('did-finish-load', () => {
+      void (async () => {
+        if (SELFTEST) await runSelfTest(win);
+        await takeShots(win, join(ROOT, 'design', 'app-shots'), SHOT_LIST);
+        app.quit();
+      })();
     });
   }
 
@@ -129,6 +145,8 @@ app.whenReady().then(() => {
   // 接口面的账：已定名的方法全部注册了（未实现的抛"尚未实现"），打一行省得每次去数
   const cov = channelCoverage();
   console.log(`[host] 接口: 已实现 ${cov.done} / 已定名 ${cov.total}（留空清单见 docs/接口规范.md §4）`);
+  // 数据源的账。夹具是"看不见就会变味"的东西，所以每次都报
+  console.log(`[host] 数据源: ${describeStore()}`);
 
   // macOS 习惯：点 dock 图标且没有窗口时重建。目标机是 Linux，保留无害
   app.on('activate', () => {

@@ -1,133 +1,120 @@
 /**
- * 关联图视图 —— SVG 逐条抄自 `design/prototype/index-final.html` 的 `#graphView`。
+ * 关联图视图 —— markup 与 `design/prototype/index-final.html` 的 `#graphView` 逐条对齐，
+ * 但**坐标由数据算出来**（`src/lib/radialLayout.ts`），不再是硬编码的示例值。
  *
- * ⚠ **这里画的是「坐标已算好」的结果，节点坐标是硬编码的示例值。**
+ * 三个已经定案的边界，都体现在这里：
+ *  · **候选关联不进这张图**（D35）—— 它不占位置。入口在进化图谱的「待确认卡片」
+ *  · **坐标在本地算**，语义在云端算（D34）。这一页只消费"谁和谁相关、多强"
+ *  · **四色全部来自 token**（`--node-1..4`），没有第五色
  *
- * 计算位置**已定案（D34 / §6.2）**：**语义分析（谁和谁相关、多强）走云端大模型，
- * 坐标（把已知强度摊成二维位置）在本地算**。所以真实布局的输入有两段——
- * 云端那段的产物是"边与权重"，本地这段的产物才是坐标。
- *
- * 之所以还没写真实布局，不是决策未定，而是**输入还没有**：没有真实的关联数据，
- * 也没有云端那一段。等接上真实数据再落（见 DESIGN-SPEC §9.4 的"竖切"注）。
- * 落的时候两条边界：节点数大时本地 O(N²) 扛不住 → Barnes-Hut 近似 + 显示上限；
- * 且**必须有骨架**（§6.2 把「重排图谱」归为本地有耗时，只给加载态）。
- *
- * 四色节点全部来自 token（`--node-1..4`），没有第四色。
+ * 一圈一圈的疏密取自原型：中心 + 两圈。**顺序稳定**（同圈内按 id 排）——
+ * 力导向会随机抖，而这页是"看关系"的，位置跳动会让人以为数据变了。
  */
-export default function GraphView() {
+import { radialLayout, type GraphInputNode } from '../../lib/radialLayout';
+import type { Association } from '../../../shared/types';
+
+const W = 900;
+const H = 560;
+
+/** 流光只画在**最强的几条**边上。全画会糊成一片，反而看不出主次 */
+const HOT_FLOWS = 3;
+const COOL_FLOWS = 2;
+
+interface Props {
+  /** 当前选中的节点。为 `null` 时画不出图（环要有圆心） */
+  centerId: string | null;
+  nodes: GraphInputNode[];
+  associations: Association[];
+}
+
+/** 颜色按**圈**分，按原型的图例语义 —— 不是按类型随手给的 */
+function colorOf(depth: number, kind: GraphInputNode['kind']): string {
+  if (depth === 0) return 'var(--node-1)';
+  if (depth === 1) return kind === 'distilled' ? 'var(--node-3)' : 'var(--node-2)';
+  return 'var(--node-4)';
+}
+
+export default function GraphView({ centerId, nodes, associations }: Props) {
+  const { nodes: placed, edges, dropped } = radialLayout(
+    centerId,
+    nodes,
+    associations,
+    W,
+    H,
+  );
+
+  if (placed.length === 0) {
+    return (
+      <div className="graph-view">
+        <div className="empty">
+          <div className="empty-title">还没有可画的关系</div>
+          <div className="empty-desc">
+            关联图以当前选中的素材为中心。选一份素材，或等 AI 建立关联。
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const pos = new Map(placed.map((n) => [n.id, n]));
+  // 强的排前面：流光的条数有限，要让最该动的那几条动起来
+  const ordered = [...edges].sort((a, b) => b.weight - a.weight);
+  const flowing = [
+    ...ordered.slice(0, HOT_FLOWS).map((e) => ({ e, cls: 'flow', dur: 2.8 })),
+    ...ordered.slice(HOT_FLOWS, HOT_FLOWS + COOL_FLOWS).map((e) => ({ e, cls: 'flow-2', dur: 4.2 })),
+  ];
+
   return (
     <div className="graph-view">
-      <svg viewBox="0 0 900 560">
-        <line className="g-edge hot" id="fe1" x1="450" y1="260" x2="300" y2="160" />
-        <line className="g-edge hot" id="fe2" x1="450" y1="260" x2="610" y2="170" />
-        <line className="g-edge hot" id="fe3" x1="450" y1="260" x2="330" y2="380" />
-        <line className="g-edge" id="fe4" x1="450" y1="260" x2="590" y2="370" />
-        <line className="g-edge" id="fe5" x1="300" y1="160" x2="200" y2="250" />
-        <line className="g-edge" id="fe6" x1="610" y1="170" x2="710" y2="260" />
-        <line className="g-edge" id="fe7" x1="330" y1="380" x2="200" y2="420" />
-        <line className="g-edge" id="fe8" x1="590" y1="370" x2="710" y2="420" />
-        <line className="g-edge" id="fe9" x1="300" y1="160" x2="180" y2="110" />
-        <line className="g-edge" id="fe10" x1="610" y1="170" x2="740" y2="120" />
+      <svg viewBox={`0 0 ${W} ${H}`}>
+        {edges.map((e, i) => {
+          const a = pos.get(e.a)!;
+          const b = pos.get(e.b)!;
+          return (
+            <line
+              key={`e${i}`}
+              id={`fe${i}`}
+              className={e.hot ? 'g-edge hot' : 'g-edge'}
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+            />
+          );
+        })}
 
-        {/* 沿边运行的光：走的是"近期活跃关联" */}
-        <circle className="flow" r="3.4">
-          <animateMotion dur="2.8s" repeatCount="indefinite">
-            <mpath href="#fe1" />
-          </animateMotion>
-        </circle>
-        <circle className="flow" r="3.4">
-          <animateMotion dur="3.4s" repeatCount="indefinite">
-            <mpath href="#fe2" />
-          </animateMotion>
-        </circle>
-        <circle className="flow" r="3.4">
-          <animateMotion dur="3.1s" repeatCount="indefinite">
-            <mpath href="#fe3" />
-          </animateMotion>
-        </circle>
-        <circle className="flow-2" r="2.6">
-          <animateMotion dur="4.2s" repeatCount="indefinite">
-            <mpath href="#fe5" />
-          </animateMotion>
-        </circle>
-        <circle className="flow-2" r="2.6">
-          <animateMotion dur="4.6s" repeatCount="indefinite">
-            <mpath href="#fe6" />
-          </animateMotion>
-        </circle>
+        {/* 沿边运行的光：走的是"近期活跃关联"。只给最强的几条 */}
+        {flowing.map(({ e, cls, dur }, i) => {
+          const idx = edges.indexOf(e);
+          return (
+            <circle key={`f${i}`} className={cls} r={cls === 'flow' ? 3.4 : 2.6}>
+              <animateMotion dur={`${dur + i * 0.3}s`} repeatCount="indefinite">
+                <mpath href={`#fe${idx}`} />
+              </animateMotion>
+            </circle>
+          );
+        })}
 
-        <g className="g-node">
-          <circle cx="450" cy="260" r="15" style={{ fill: 'var(--node-1)' }} />
-          <text className="strong" x="450" y="292" textAnchor="middle">
-            增长模型.md
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="300" cy="160" r="11" style={{ fill: 'var(--node-2)' }} />
-          <text x="300" y="140" textAnchor="middle">
-            小红书运营手册
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="610" cy="170" r="11" style={{ fill: 'var(--node-2)' }} />
-          <text x="610" y="150" textAnchor="middle">
-            AI 产品观察
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="330" cy="380" r="10" style={{ fill: 'var(--node-3)' }} />
-          <text x="330" y="408" textAnchor="middle">
-            认知觉醒
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="590" cy="370" r="9" style={{ fill: 'var(--node-3)' }} />
-          <text x="590" y="396" textAnchor="middle">
-            竞品调研.pdf
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="200" cy="250" r="6" style={{ fill: 'var(--node-4)' }} />
-          <text x="200" y="272" textAnchor="middle">
-            爆款公式
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="710" cy="260" r="6" style={{ fill: 'var(--node-4)' }} />
-          <text x="710" y="282" textAnchor="middle">
-            Agent 趋势
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="200" cy="420" r="5" style={{ fill: 'var(--node-4)' }} />
-          <text x="200" y="440" textAnchor="middle">
-            习惯回路
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="710" cy="420" r="5" style={{ fill: 'var(--node-4)' }} />
-          <text x="710" y="440" textAnchor="middle">
-            Notion AI
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="180" cy="110" r="5" style={{ fill: 'var(--node-4)' }} />
-          <text x="180" y="96" textAnchor="middle">
-            选题库
-          </text>
-        </g>
-        <g className="g-node">
-          <circle cx="740" cy="120" r="5" style={{ fill: 'var(--node-4)' }} />
-          <text x="740" y="106" textAnchor="middle">
-            RAG 笔记
-          </text>
-        </g>
+        {placed.map((n) => (
+          <g className="g-node" key={n.id}>
+            <circle cx={n.x} cy={n.y} r={n.r} style={{ fill: colorOf(n.depth, n.kind) }} />
+            <text
+              className={n.depth === 0 ? 'strong' : undefined}
+              // 中心节点的标签放下方（它是"当前文件"，视觉重量最大），其余放上方
+              x={n.x}
+              y={n.depth === 0 ? n.y + n.r + 17 : n.y - n.r - 7}
+              textAnchor="middle"
+            >
+              {n.label}
+            </text>
+          </g>
+        ))}
       </svg>
 
       <div className="graph-legend">
         <span>
           <i style={{ background: 'var(--node-1)' }} />
-          当前文件
+          当前{placed[0]?.kind === 'distilled' ? '知识点' : '素材'}
         </span>
         <span>
           <i style={{ background: 'var(--node-2)' }} />
@@ -142,6 +129,12 @@ export default function GraphView() {
           次级关联
         </span>
       </div>
+
+      {dropped > 0 && (
+        <div className="graph-note">
+          另有 {dropped} 个节点与当前选中没有已建立的关联，未画出
+        </div>
+      )}
     </div>
   );
 }
